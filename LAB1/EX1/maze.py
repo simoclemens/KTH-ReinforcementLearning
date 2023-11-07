@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 from IPython import display
+import random
 
 # Implemented methods
 methods = ['DynProg', 'ValIter']
@@ -45,6 +46,7 @@ class Maze:
         self.maze = maze
         # define possible actions
         self.actions = self.__actions()
+        self.minotaur_actions=self.__minotaur_actions()
         # define possible states
         self.states, self.map = self.__states()
 
@@ -56,9 +58,19 @@ class Maze:
         # define rewards
         self.rewards = self.__rewards(weights=weights, random_rewards=random_rewards)
 
+        self.minotaur_position = (0, 0)
+
     def __actions(self):
         actions = dict()
         actions[self.STAY] = (0, 0)
+        actions[self.MOVE_LEFT] = (0, -1)
+        actions[self.MOVE_RIGHT] = (0, 1)
+        actions[self.MOVE_UP] = (-1, 0)
+        actions[self.MOVE_DOWN] = (1, 0)
+        return actions
+
+    def __minotaur_actions(self):
+        actions = dict()
         actions[self.MOVE_LEFT] = (0, -1)
         actions[self.MOVE_RIGHT] = (0, 1)
         actions[self.MOVE_UP] = (-1, 0)
@@ -128,11 +140,29 @@ class Maze:
                 # Reward for reaching the exit
                 elif s == next_s and self.maze[self.states[next_s]] == 2:
                     rewards[s, a] = self.GOAL_REWARD
+                # Reward for reaching the exit
+                elif s == next_s and self.maze[self.states[next_s]] == 2:
+                    rewards[s, a] = self.MINOTAUR_REWARD
                 # Reward for taking a step to an empty cell that is not the exit
                 else:
                     rewards[s, a] = self.STEP_REWARD
 
         return rewards
+
+    def __possible_minotaur_positions(self):
+        possible_positions = []
+        for action in self.minotaur_actions:
+            row = self.minotaur_position[0] + self.minotaur_actions[action][0]
+            col = self.minotaur_position[1] + self.minotaur_actions[action][1]
+            if (row != -1) and (row != self.maze.shape[0]) and (col != -1) and (col != self.maze.shape[1]):
+                possible_positions.append((row, col))
+        return possible_positions
+
+    def __move_minotaur(self):
+        possible_positions = self.__possible_minotaur_positions()
+        n = len(possible_positions)
+        next_position = random.randint(0, n - 1)
+        return next_position
 
     def simulate(self, start, policy, method):
         if method not in methods:
