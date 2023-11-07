@@ -45,6 +45,7 @@ class Maze:
         self.maze = maze
         # define possible actions
         self.actions = self.__actions()
+        self.minotaur_actions = self.__minotaur_actions()
         # define possible states
         self.states, self.map = self.__states()
 
@@ -59,6 +60,14 @@ class Maze:
     def __actions(self):
         actions = dict()
         actions[self.STAY] = (0, 0)
+        actions[self.MOVE_LEFT] = (0, -1)
+        actions[self.MOVE_RIGHT] = (0, 1)
+        actions[self.MOVE_UP] = (-1, 0)
+        actions[self.MOVE_DOWN] = (1, 0)
+        return actions
+    
+    def __minotaur_actions(self):
+        actions = dict()
         actions[self.MOVE_LEFT] = (0, -1)
         actions[self.MOVE_RIGHT] = (0, 1)
         actions[self.MOVE_UP] = (-1, 0)
