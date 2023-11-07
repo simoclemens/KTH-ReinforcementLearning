@@ -48,7 +48,7 @@ class Maze:
         self.actions = self.__actions()
         self.minotaur_actions=self.__minotaur_actions()
         # define possible states
-        self.states, self.map = self.__states()
+        self.states, self.map, self.minotaur_position = self.__states()
 
         self.n_actions = len(self.actions)
         self.n_states = len(self.states)
@@ -58,7 +58,7 @@ class Maze:
         # define rewards
         self.rewards = self.__rewards(weights=weights, random_rewards=random_rewards)
 
-        self.minotaur_position = (0, 0)
+        self.minotaur_next_positions = None
 
     def __actions(self):
         actions = dict()
@@ -81,6 +81,7 @@ class Maze:
         states = dict()
         map = dict()
         end = False
+        minotaur_position = None
         s = 0
         for i in range(self.maze.shape[0]):
             for j in range(self.maze.shape[1]):
@@ -88,7 +89,9 @@ class Maze:
                     states[s] = (i, j)
                     map[(i, j)] = s
                     s += 1
-        return states, map
+                    if self.maze[i, j] == 2:
+                        minotaur_position = (i, j)
+        return states, map, minotaur_position
 
     def __move(self, state, action):
         """ Makes a step in the maze, given a current position and an action.
@@ -96,6 +99,10 @@ class Maze:
 
             :return tuple next_cell: Position (x,y) on the maze that agent transitions to.
         """
+        tmp_rewards = self.rewards
+        self.minotaur_next_positions = self.__possible_minotaur_positions()
+        tmp_rewards[self.__prev_states_actions()] = self.MINOTAUR_REWARD
+
         # Compute the future position given current (state, action)
         row = self.states[state][0] + self.actions[action][0]
         col = self.states[state][1] + self.actions[action][1]
@@ -129,7 +136,6 @@ class Maze:
     def __rewards(self, weights=None, random_rewards=None):
 
         rewards = np.zeros((self.n_states, self.n_actions))
-
         # If the rewards are not described by a weight matrix
         for s in range(self.n_states):
             for a in range(self.n_actions):
@@ -140,9 +146,6 @@ class Maze:
                 # Reward for reaching the exit
                 elif s == next_s and self.maze[self.states[next_s]] == 2:
                     rewards[s, a] = self.GOAL_REWARD
-                # Reward for reaching the exit
-                elif s == next_s and self.maze[self.states[next_s]] == 2:
-                    rewards[s, a] = self.MINOTAUR_REWARD
                 # Reward for taking a step to an empty cell that is not the exit
                 else:
                     rewards[s, a] = self.STEP_REWARD
@@ -158,11 +161,21 @@ class Maze:
                 possible_positions.append((row, col))
         return possible_positions
 
-    def __move_minotaur(self):
-        possible_positions = self.__possible_minotaur_positions()
-        n = len(possible_positions)
-        next_position = random.randint(0, n - 1)
-        return next_position
+    def __minotaur_move(self):
+        n = len(self.minotaur_next_positions)
+        next_move = random.randint(0, n - 1)
+        return self.minotaur_next_positions[next_move]
+
+    def __prev_states_actions(self):
+        states_actions = []
+        for position in self.minotaur_next_positions:
+            for i,action in enumerate(self.actions):
+                row = position[0] + self.actions[action][0]
+                col = position[1] + self.actions[action][1]
+                if (row != -1) and (row != self.maze.shape[0]) and (col != -1) and (col != self.maze.shape[1]):
+                    if (row, col) in self.map:
+                        states_actions.append((self.map[(row, col)], i))
+        return states_actions
 
     def simulate(self, start, policy, method):
         if method not in methods:
