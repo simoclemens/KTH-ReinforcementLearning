@@ -96,6 +96,7 @@ class Maze:
 
             :return tuple next_cell: Position (x,y) on the maze that agent transitions to.
         """
+        
         # Compute the future position given current (state, action)
         row = self.states[state][0] + self.actions[action][0]
         col = self.states[state][1] + self.actions[action][1]
@@ -127,6 +128,8 @@ class Maze:
         return transition_probabilities
 
     def __rewards(self, weights=None, random_rewards=None):
+
+
 
         rewards = np.zeros((self.n_states, self.n_actions))
 
@@ -328,7 +331,7 @@ def value_iteration(env, gamma, epsilon):
 
 def draw_maze(maze):
     # Map a color to each cell in the maze
-    col_map = {0: WHITE, 1: BLACK, 2: LIGHT_GREEN, -6: LIGHT_RED, -1: LIGHT_RED};
+    col_map = {0: WHITE, -10: BLACK, 2: LIGHT_GREEN, -1000000: LIGHT_RED}
 
     # Give a color to each cell
     rows, cols = maze.shape;
