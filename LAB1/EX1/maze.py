@@ -58,7 +58,9 @@ class Maze:
         # define rewards
         self.rewards = self.__rewards(weights=weights, random_rewards=random_rewards)
 
+
         self.minotaur_next_positions = None
+        self.next_rewards = None
 
     def __actions(self):
         actions = dict()
@@ -99,9 +101,9 @@ class Maze:
 
             :return tuple next_cell: Position (x,y) on the maze that agent transitions to.
         """
-        tmp_rewards = self.rewards
+        self.next_rewards = self.rewards
         self.minotaur_next_positions = self.__possible_minotaur_positions()
-        tmp_rewards[self.__prev_states_actions()] = self.MINOTAUR_REWARD
+        self.next_rewards[self.__prev_states_actions()] = self.MINOTAUR_REWARD
 
         # Compute the future position given current (state, action)
         row = self.states[state][0] + self.actions[action][0]
@@ -198,8 +200,10 @@ class Maze:
                 # to the path
                 path.append(self.states[next_s])
                 # Update time and state for next iteration
+                self.minotaur_next_positions = self.__minotaur_move()
                 t += 1
                 s = next_s
+                self.minotaur_position = self.minotaur_next_positions
         if method == 'ValIter':
             # Initialize current state, next state and time
             t = 1
@@ -232,7 +236,7 @@ class Maze:
         print('The mapping of the states:')
         print(self.map)
         print('The rewards:')
-        print(self.rewards)
+        print(self.next_rewards)
 
 
 def dynamic_programming(env, horizon):
@@ -253,7 +257,7 @@ def dynamic_programming(env, horizon):
     # - Action space
     # - The finite horizon
     p = env.transition_probabilities
-    r = env.rewards
+    r = env.next_rewards
     n_states = env.n_states
     n_actions = env.n_actions
     T = horizon
@@ -300,7 +304,7 @@ def value_iteration(env, gamma, epsilon):
     # - Action space
     # - The finite horizon
     p = env.transition_probabilities
-    r = env.rewards
+    r = env.next_rewards
     n_states = env.n_states
     n_actions = env.n_actions
 
