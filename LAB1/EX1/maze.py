@@ -35,9 +35,9 @@ class Maze:
 
     # Reward values
     STEP_REWARD = -1
-    GOAL_REWARD = 10
+    GOAL_REWARD = 100
     IMPOSSIBLE_REWARD = -100
-    MINOTAUR_REWARD = -1000000
+    MINOTAUR_REWARD = -10000
 
     def __init__(self, maze, weights=None, random_rewards=False, horizon=20):
         """ Constructor of the environment Maze.
@@ -175,7 +175,7 @@ class Maze:
             for position in new_positions:
                 sa_list = self.__states_actions(position)
                 for elem in sa_list:
-                    dynamic_rewards[elem[0],elem[1],t] = new_positions[position]
+                    dynamic_rewards[elem[0], elem[1], t] = new_positions[position]
             self.positions = new_positions
 
         return dynamic_rewards
@@ -201,6 +201,15 @@ class Maze:
             path.append(pos)
 
         return path
+
+    def __minotaur_move(self):
+        pos = self.minotaur_position
+        next_positions = self.__possible_minotaur_positions(pos)
+        n = len(next_positions)
+        next_move = random.randint(0, n - 1)
+        pos = next_positions[next_move]
+        self.minotaur_position = pos
+        return pos
 
     def __states_actions(self, position):
         states_actions = []
@@ -228,7 +237,7 @@ class Maze:
             # Add the starting position in the maze to the path
             path.append(start)
             # minotaur_path.append(self.minotaur_position)
-            while t < horizon - 1 and self.states[s]!=self.exit:
+            while t < horizon - 1 and self.states[s] != self.exit:
                 # Move to next state given the policy and the current state
                 next_s = self.__move(s, policy[s, t])
                 # Add the position in the maze corresponding to the next state
@@ -262,8 +271,8 @@ class Maze:
                 path.append(self.states[next_s])
                 # Update time and state for next iteration
                 t += 1
-        minotaur_path = self.__minotaur_path()
-        return path, minotaur_path
+        minotaur_pos = self.__minotaur_move()
+        return path, minotaur_pos
 
     def show(self):
         print('The states are :')
@@ -315,7 +324,7 @@ def dynamic_programming(env, horizon):
         for s in range(n_states):
             for a in range(n_actions):
                 # Update of the temporary Q values
-                Q[s, a] = r[s, a,t] + np.dot(p[:, s, a], V[:, t + 1])
+                Q[s, a] = r[s, a, t] + np.dot(p[:, s, a], V[:, t + 1])
         # Update by taking the maximum Q value w.r.t the action a
         V[:, t] = np.max(Q, 1)
         # The optimal action is the one that maximizes the Q function
