@@ -230,6 +230,8 @@ class Maze:
         # - Action space
         # - The finite horizon
         p = self.transition_probabilities
+
+        self.dynamic_rewards = self.__dynamic_rewards()
         r = self.dynamic_rewards
         n_states = self.n_states
         n_actions = self.n_actions
@@ -276,7 +278,7 @@ class Maze:
             # minotaur_path.append(self.minotaur_position)
             while t < horizon - 1 and self.states[s]!=self.exit:
                 # Move to next state given the policy and the current state
-
+                self.positions = {minotaur_path[t]: self.MINOTAUR_REWARD}
                 _, policy = self.dynamic_programming(horizon-t)
                 next_s = self.__move(s, policy[s, 0])
                 # Add the position in the maze corresponding to the next state
@@ -463,7 +465,7 @@ def animate_solution(maze, path, minotaur_path):
             if path[i] == path[i - 1]:
                 grid.get_celld()[(path[i])].set_facecolor(LIGHT_GREEN)
                 grid.get_celld()[(path[i])].get_text().set_text('Player is out')  
-                
+
             elif path[i] == minotaur_path[i]:
                 grid.get_celld()[(path[i])].set_facecolor(LIGHT_RED)
                 grid.get_celld()[(path[i])].get_text().set_text('Player is dead')
