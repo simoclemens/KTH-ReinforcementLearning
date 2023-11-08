@@ -35,7 +35,7 @@ class Maze:
 
     # Reward values
     STEP_REWARD = 0
-    GOAL_REWARD = 10
+    GOAL_REWARD = 30
     IMPOSSIBLE_REWARD = -1
     MINOTAUR_REWARD = -10
 
@@ -171,7 +171,7 @@ class Maze:
                     if elem in new_positions:
                         new_positions[elem] += reward
                     else:
-                        new_positions[elem] = reward
+                        new_positions[elem] = 10+reward
             for position in new_positions:
                 sa_list = self.__states_actions(position)
                 for elem in sa_list:
@@ -462,7 +462,7 @@ def animate_solution(maze, path, minotaur_path):
         grid.get_celld()[(minotaur_path[i])].set_facecolor(LIGHT_RED)
         grid.get_celld()[(minotaur_path[i])].get_text().set_text('Minotaur')
         if i > 0:
-            if path[i] == path[i - 1]:
+            if path[i] == path[i - 1] and path[i] == minotaur_path[0]:
                 grid.get_celld()[(path[i])].set_facecolor(LIGHT_GREEN)
                 grid.get_celld()[(path[i])].get_text().set_text('Player is out')  
 
@@ -471,6 +471,8 @@ def animate_solution(maze, path, minotaur_path):
                 grid.get_celld()[(path[i])].get_text().set_text('Player is dead')
                 grid.get_celld()[(minotaur_path[i - 1])].set_facecolor(col_map[maze[minotaur_path[i - 1]]])
                 grid.get_celld()[(minotaur_path[i - 1])].get_text().set_text('')
+                grid.get_celld()[(path[i - 1])].set_facecolor(col_map[maze[path[i - 1]]])
+                grid.get_celld()[(path[i - 1])].get_text().set_text('')
                 break
             else:
                 grid.get_celld()[(path[i - 1])].set_facecolor(col_map[maze[path[i - 1]]])
