@@ -34,10 +34,10 @@ class Maze:
     }
 
     # Reward values
-    STEP_REWARD = -1
+    STEP_REWARD = 0
     GOAL_REWARD = 10
-    IMPOSSIBLE_REWARD = -100
-    MINOTAUR_REWARD = -1000000
+    IMPOSSIBLE_REWARD = -1
+    MINOTAUR_REWARD = -10
 
     def __init__(self, maze, weights=None, random_rewards=False, horizon=20):
         """ Constructor of the environment Maze.
@@ -151,6 +151,8 @@ class Maze:
                 # Reward for reaching the exit
                 elif s == next_s and self.maze[self.states[next_s]] == 2:
                     rewards[s, a] = self.GOAL_REWARD
+                elif next_s == self.minotaur_position:
+                    rewards[s, a] = self.MINOTAUR_REWARD
                 # Reward for taking a step to an empty cell that is not the exit
                 else:
                     rewards[s, a] = self.STEP_REWARD
