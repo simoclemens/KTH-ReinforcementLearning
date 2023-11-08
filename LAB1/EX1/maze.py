@@ -151,8 +151,6 @@ class Maze:
                 # Reward for reaching the exit
                 elif s == next_s and self.maze[self.states[next_s]] == 2:
                     rewards[s, a] = self.GOAL_REWARD
-                elif next_s == self.minotaur_position:
-                    rewards[s, a] = self.MINOTAUR_REWARD
                 # Reward for taking a step to an empty cell that is not the exit
                 else:
                     rewards[s, a] = self.STEP_REWARD
@@ -214,16 +212,62 @@ class Maze:
                     states_actions.append((self.map[(row, col)], i))
         return states_actions
 
-    def simulate(self, start, policy, method):
+    def dynamic_programming(self, horizon):
+        """ Solves the shortest path problem using dynamic programming
+            :input Maze env           : The maze environment in which we seek to
+                                        find the shortest path.
+            :input int horizon        : The time T up to which we solve the problem.
+            :return numpy.array V     : Optimal values for every state at every
+                                        time, dimension S*T
+            :return numpy.array policy: Optimal time-varying policy at every state,
+                                        dimension S*T
+        """
+
+        # The dynamic prgramming requires the knowledge of :
+        # - Transition probabilities
+        # - Rewards
+        # - State space
+        # - Action space
+        # - The finite horizon
+        p = self.transition_probabilities
+        r = self.dynamic_rewards
+        n_states = self.n_states
+        n_actions = self.n_actions
+        T = horizon
+
+        # The variables involved in the dynamic programming backwards recursions
+        V = np.zeros((n_states, T + 1))
+        policy = np.zeros((n_states, T + 1))
+        Q = np.zeros((n_states, n_actions))
+
+        # Initialization
+        Q = np.copy(r[:, :, T-1])
+        V[:, T] = np.max(Q, 1)
+        policy[:, T] = np.argmax(Q, 1)
+
+        # The dynamic programming backwards recursion
+        for t in range(T - 1, -1, -1):
+            # Update the value function according to the bellman equation
+            for s in range(n_states):
+                for a in range(n_actions):
+                    # Update of the temporary Q values
+                    Q[s, a] = r[s, a,t] + np.dot(p[:, s, a], V[:, t + 1])
+            # Update by taking the maximum Q value w.r.t the action a
+            V[:, t] = np.max(Q, 1)
+            # The optimal action is the one that maximizes the Q function
+            policy[:, t] = np.argmax(Q, 1)
+        return V, policy
+
+
+
+    def simulate(self, start, horizon, method):
         if method not in methods:
             error = 'ERROR: the argument method must be in {}'.format(methods)
             raise NameError(error)
 
         path = list()
-        minotaur_path = list()
+        minotaur_path = self.__minotaur_path()
         if method == 'DynProg':
-            # Deduce the horizon from the policy shape
-            horizon = policy.shape[1]
             # Initialize current state and time
             t = 0
             s = self.map[start]
@@ -232,7 +276,9 @@ class Maze:
             # minotaur_path.append(self.minotaur_position)
             while t < horizon - 1 and self.states[s]!=self.exit:
                 # Move to next state given the policy and the current state
-                next_s = self.__move(s, policy[s, t])
+
+                _, policy = self.dynamic_programming(horizon-t)
+                next_s = self.__move(s, policy[s, 0])
                 # Add the position in the maze corresponding to the next state
                 # to the path
                 path.append(self.states[next_s])
@@ -264,7 +310,6 @@ class Maze:
                 path.append(self.states[next_s])
                 # Update time and state for next iteration
                 t += 1
-        minotaur_path = self.__minotaur_path()
         return path, minotaur_path
 
     def show(self):
@@ -277,52 +322,6 @@ class Maze:
         print('The rewards:')
         print(self.next_rewards)
 
-
-def dynamic_programming(env, horizon):
-    """ Solves the shortest path problem using dynamic programming
-        :input Maze env           : The maze environment in which we seek to
-                                    find the shortest path.
-        :input int horizon        : The time T up to which we solve the problem.
-        :return numpy.array V     : Optimal values for every state at every
-                                    time, dimension S*T
-        :return numpy.array policy: Optimal time-varying policy at every state,
-                                    dimension S*T
-    """
-
-    # The dynamic prgramming requires the knowledge of :
-    # - Transition probabilities
-    # - Rewards
-    # - State space
-    # - Action space
-    # - The finite horizon
-    p = env.transition_probabilities
-    r = env.dynamic_rewards
-    n_states = env.n_states
-    n_actions = env.n_actions
-    T = horizon
-
-    # The variables involved in the dynamic programming backwards recursions
-    V = np.zeros((n_states, T + 1))
-    policy = np.zeros((n_states, T + 1))
-    Q = np.zeros((n_states, n_actions))
-
-    # Initialization
-    Q = np.copy(r[:, :, T-1])
-    V[:, T] = np.max(Q, 1)
-    policy[:, T] = np.argmax(Q, 1)
-
-    # The dynamic programming backwards recursion
-    for t in range(T - 1, -1, -1):
-        # Update the value function according to the bellman equation
-        for s in range(n_states):
-            for a in range(n_actions):
-                # Update of the temporary Q values
-                Q[s, a] = r[s, a,t] + np.dot(p[:, s, a], V[:, t + 1])
-        # Update by taking the maximum Q value w.r.t the action a
-        V[:, t] = np.max(Q, 1)
-        # The optimal action is the one that maximizes the Q function
-        policy[:, t] = np.argmax(Q, 1)
-    return V, policy
 
 
 def value_iteration(env, gamma, epsilon):
@@ -419,7 +418,7 @@ def draw_maze(maze):
         cell.set_width(1.0 / cols);
 
 
-def animate_solution(maze, path):
+def animate_solution(maze, path, minotaur_path):
     # Map a color to each cell in the maze
     col_map = {0: WHITE, 1: BLACK, 2: LIGHT_GREEN, -6: LIGHT_RED, -1: LIGHT_RED};
 
@@ -458,13 +457,25 @@ def animate_solution(maze, path):
     for i in range(len(path)):
         grid.get_celld()[(path[i])].set_facecolor(LIGHT_ORANGE)
         grid.get_celld()[(path[i])].get_text().set_text('Player')
+        grid.get_celld()[(minotaur_path[i])].set_facecolor(LIGHT_RED)
+        grid.get_celld()[(minotaur_path[i])].get_text().set_text('Minotaur')
         if i > 0:
             if path[i] == path[i - 1]:
                 grid.get_celld()[(path[i])].set_facecolor(LIGHT_GREEN)
-                grid.get_celld()[(path[i])].get_text().set_text('Player is out')
+                grid.get_celld()[(path[i])].get_text().set_text('Player is out')  
+                
+            elif path[i] == minotaur_path[i]:
+                grid.get_celld()[(path[i])].set_facecolor(LIGHT_RED)
+                grid.get_celld()[(path[i])].get_text().set_text('Player is dead')
+                grid.get_celld()[(minotaur_path[i - 1])].set_facecolor(col_map[maze[minotaur_path[i - 1]]])
+                grid.get_celld()[(minotaur_path[i - 1])].get_text().set_text('')
+                break
             else:
                 grid.get_celld()[(path[i - 1])].set_facecolor(col_map[maze[path[i - 1]]])
                 grid.get_celld()[(path[i - 1])].get_text().set_text('')
+                grid.get_celld()[(minotaur_path[i - 1])].set_facecolor(col_map[maze[minotaur_path[i - 1]]])
+                grid.get_celld()[(minotaur_path[i - 1])].get_text().set_text('')
+                                
         display.display(fig)
         display.clear_output(wait=True)
         time.sleep(1)
