@@ -35,9 +35,9 @@ class Maze:
 
     # Reward values
     STEP_REWARD = 0
-    GOAL_REWARD = 30
-    IMPOSSIBLE_REWARD = -1
-    MINOTAUR_REWARD = -10
+    GOAL_REWARD = 1
+    IMPOSSIBLE_REWARD = -0.1
+    MINOTAUR_REWARD = -1
 
     def __init__(self, maze, weights=None, random_rewards=False, horizon=20):
         """ Constructor of the environment Maze.
@@ -167,11 +167,12 @@ class Maze:
             for position in self.positions:
                 possible_positions = self.__possible_minotaur_positions(position)
                 reward = self.positions[position]/len(possible_positions)
+                # print(reward, self.positions[position], len(possible_positions))
                 for elem in possible_positions:
                     if elem in new_positions:
                         new_positions[elem] += reward
                     else:
-                        new_positions[elem] = 10+reward
+                        new_positions[elem] = reward
             for position in new_positions:
                 sa_list = self.__states_actions(position)
                 for elem in sa_list:
