@@ -35,9 +35,9 @@ class Maze:
 
     # Reward values
     STEP_REWARD = -1
-    GOAL_REWARD = 0
+    GOAL_REWARD = 100
     IMPOSSIBLE_REWARD = -100
-    MINOTAUR_REWARD = -1
+    MINOTAUR_REWARD = -100
 
     def __init__(self, maze, weights=None, random_rewards=False):
         """ Constructor of the environment Maze.
@@ -145,6 +145,7 @@ class Maze:
                     p_pos = self.states[next_s][0]
                     m_pos = self.states[next_s][1]
                     m_next_positions = self.__possible_minotaur_positions(m_pos)
+                    n = len(m_next_positions)
                     # Reward for hitting a wall
                     if s == next_s and a != self.STAY:
                         rewards[s, a] = self.IMPOSSIBLE_REWARD
@@ -153,7 +154,7 @@ class Maze:
                         rewards[s, a] = self.GOAL_REWARD
                     # Reward for being catched by the minotaur
                     elif p_pos in m_next_positions:
-                        rewards[s, a] = self.MINOTAUR_REWARD
+                        rewards[s, a] = self.MINOTAUR_REWARD / n
                     # Reward for taking a step to an empty cell that is not the exit
                     else:
                         rewards[s, a] = self.STEP_REWARD
@@ -216,7 +217,7 @@ class Maze:
             while t < horizon - 1:
                 m_pos = self.__minotaur_move(s)
                 # Move to next state given the policy and the current state
-                p_pos = self.states[self.__move(s, policy[s, t])][0]
+                p_pos = self.states[self.__move(s, policy[s])][0]
                 # Modify the state according to the random move of the minotaur
                 next_s = self.map[(p_pos, m_pos)]
                 # Add the position in the maze corresponding to the next state
@@ -226,22 +227,32 @@ class Maze:
                 t += 1
                 s = next_s
         if method == 'ValIter':
+            death_prob = 1/30
+            life = np.random.geometric(death_prob)
             # Initialize current state, next state and time
             t = 1
             s = self.map[start]
             # Add the starting position in the maze to the path
             path.append(start)
+            # Move the minotaur
+            m_pos = self.__minotaur_move(s)
             # Move to next state given the policy and the current state
-            next_s = self.__move(s, policy[s])
+            p_pos = self.states[self.__move(s, policy[s])][0]
+            # Modify the state according to the random move of the minotaur
+            next_s = self.map[(p_pos, m_pos)]
             # Add the position in the maze corresponding to the next state
             # to the path
             path.append(self.states[next_s])
             # Loop while state is not the goal state
-            while s != next_s:
+            while s != next_s and t < life:
                 # Update state
                 s = next_s
+                # Move the minotaur
+                m_pos = self.__minotaur_move(s)
                 # Move to next state given the policy and the current state
-                next_s = self.__move(s, policy[s])
+                p_pos = self.states[self.__move(s, policy[s])][0]
+                # Modify the state according to the random move of the minotaur
+                next_s = self.map[(p_pos, m_pos)]
                 # Add the position in the maze corresponding to the next state
                 # to the path
                 path.append(self.states[next_s])
@@ -307,7 +318,7 @@ def dynamic_programming(env, horizon):
     return V, policy
 
 
-def value_iteration(env, gamma, epsilon):
+def value_iteration(env, death_p, epsilon):
     """ Solves the shortest path problem using value iteration
         :input Maze env           : The maze environment in which we seek to
                                     find the shortest path.
@@ -335,9 +346,8 @@ def value_iteration(env, gamma, epsilon):
     BV = np.zeros(n_states)
     # Iteration counter
     n = 0
-    # Tolerance error
-    tol = (1 - gamma) * epsilon / gamma
-
+    gamma = 1
+    tol = 0
     # Initialization of the VI
     for s in range(n_states):
         for a in range(n_actions):
@@ -348,6 +358,9 @@ def value_iteration(env, gamma, epsilon):
     while np.linalg.norm(V - BV) >= tol and n < 200:
         # Increment by one the numbers of iteration
         n += 1
+        gamma = (1-death_p)**n
+        # Tolerance
+        tol = (1 - gamma) * epsilon / gamma
         # Update the value function
         V = np.copy(BV)
         # Compute the new BV
@@ -356,7 +369,6 @@ def value_iteration(env, gamma, epsilon):
                 Q[s, a] = r[s, a] + gamma * np.dot(p[:, s, a], V)
         BV = np.max(Q, 1)
         # Show error
-        # print(np.linalg.norm(V - BV))
 
     # Compute policy
     policy = np.argmax(Q, 1)
