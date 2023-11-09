@@ -438,15 +438,27 @@ def animate_solution(maze, path):
 
     # Update the color at each frame
     for i in range(len(path)):
-        grid.get_celld()[(path[i])].set_facecolor(LIGHT_ORANGE)
-        grid.get_celld()[(path[i])].get_text().set_text('Player')
         if i > 0:
-            if path[i] == path[i - 1]:
-                grid.get_celld()[(path[i])].set_facecolor(LIGHT_GREEN)
-                grid.get_celld()[(path[i])].get_text().set_text('Player is out')
+            if path[i][0] == path[i - 1][0]:
+                grid.get_celld()[(path[i][0])].set_facecolor(LIGHT_GREEN)
+                grid.get_celld()[(path[i][0])].get_text().set_text('Player is out')
+                grid.get_celld()[(path[i - 1][1])].set_facecolor(col_map[maze[path[i - 1][1]]])
+                grid.get_celld()[(path[i - 1][1])].get_text().set_text('')
+                break
+            elif path[i][0] == path[i][1]:
+                grid.get_celld()[(path[i][0])].set_facecolor(LIGHT_RED)
+                grid.get_celld()[(path[i][0])].get_text().set_text('Player is catched')
+                break
             else:
-                grid.get_celld()[(path[i - 1])].set_facecolor(col_map[maze[path[i - 1]]])
-                grid.get_celld()[(path[i - 1])].get_text().set_text('')
+                grid.get_celld()[(path[i - 1][0])].set_facecolor(col_map[maze[path[i - 1][0]]])
+                grid.get_celld()[(path[i - 1][0])].get_text().set_text('')
+                grid.get_celld()[(path[i - 1][1])].set_facecolor(col_map[maze[path[i - 1][1]]])
+                grid.get_celld()[(path[i - 1][1])].get_text().set_text('')
+        
+        grid.get_celld()[(path[i][0])].set_facecolor(LIGHT_ORANGE)
+        grid.get_celld()[(path[i][0])].get_text().set_text('Player')
+        grid.get_celld()[(path[i][1])].set_facecolor(LIGHT_RED)
+        grid.get_celld()[(path[i][1])].get_text().set_text('Minotaur')
         display.display(fig)
         display.clear_output(wait=True)
         time.sleep(1)
