@@ -176,7 +176,7 @@ class Maze:
                     # Simply put the reward as the weights o the next state.
                     rewards[s, a] = weights[i][j]
 
-        return rewards;
+        return rewards
 
     def __possible_minotaur_positions(self, position):
         possible_positions = []
@@ -201,18 +201,18 @@ class Maze:
 
     def simulate(self, start, policy, method):
         if method not in methods:
-            error = 'ERROR: the argument method must be in {}'.format(methods);
-            raise NameError(error);
+            error = 'ERROR: the argument method must be in {}'.format(methods)
+            raise NameError(error)
 
         path = list()
         if method == 'DynProg':
             # Deduce the horizon from the policy shape
-            horizon = policy.shape[1];
+            horizon = policy.shape[1]
             # Initialize current state and time
-            t = 0;
-            s = self.map[start];
+            t = 0
+            s = self.map[start]
             # Add the starting position in the maze to the path
-            path.append(start);
+            path.append(start)
             while t < horizon - 1:
                 m_pos = self.__minotaur_move(s)
                 # Move to next state given the policy and the current state
@@ -223,30 +223,30 @@ class Maze:
                 # to the path
                 path.append(self.states[next_s])
                 # Update time and state for next iteration
-                t += 1;
-                s = next_s;
+                t += 1
+                s = next_s
         if method == 'ValIter':
             # Initialize current state, next state and time
-            t = 1;
-            s = self.map[start];
+            t = 1
+            s = self.map[start]
             # Add the starting position in the maze to the path
-            path.append(start);
+            path.append(start)
             # Move to next state given the policy and the current state
-            next_s = self.__move(s, policy[s]);
+            next_s = self.__move(s, policy[s])
             # Add the position in the maze corresponding to the next state
             # to the path
-            path.append(self.states[next_s]);
+            path.append(self.states[next_s])
             # Loop while state is not the goal state
             while s != next_s:
                 # Update state
-                s = next_s;
+                s = next_s
                 # Move to next state given the policy and the current state
-                next_s = self.__move(s, policy[s]);
+                next_s = self.__move(s, policy[s])
                 # Add the position in the maze corresponding to the next state
                 # to the path
                 path.append(self.states[next_s])
                 # Update time and state for next iteration
-                t += 1;
+                t += 1
         return path
 
     def show(self):
@@ -353,7 +353,7 @@ def value_iteration(env, gamma, epsilon):
         # Compute the new BV
         for s in range(n_states):
             for a in range(n_actions):
-                Q[s, a] = r[s, a] + gamma * np.dot(p[:, s, a], V);
+                Q[s, a] = r[s, a] + gamma * np.dot(p[:, s, a], V)
         BV = np.max(Q, 1)
         # Show error
         # print(np.linalg.norm(V - BV))
@@ -366,24 +366,24 @@ def value_iteration(env, gamma, epsilon):
 
 def draw_maze(maze):
     # Map a color to each cell in the maze
-    col_map = {0: WHITE, 1: BLACK, 2: LIGHT_GREEN, -6: LIGHT_RED, -1: LIGHT_RED};
+    col_map = {0: WHITE, 1: BLACK, 2: LIGHT_GREEN, -6: LIGHT_RED, -1: LIGHT_RED}
 
     # Give a color to each cell
-    rows, cols = maze.shape;
-    colored_maze = [[col_map[maze[j, i]] for i in range(cols)] for j in range(rows)];
+    rows, cols = maze.shape
+    colored_maze = [[col_map[maze[j, i]] for i in range(cols)] for j in range(rows)]
 
     # Create figure of the size of the maze
-    fig = plt.figure(1, figsize=(cols, rows));
+    fig = plt.figure(1, figsize=(cols, rows))
 
     # Remove the axis ticks and add title title
-    ax = plt.gca();
-    ax.set_title('The Maze');
-    ax.set_xticks([]);
-    ax.set_yticks([]);
+    ax = plt.gca()
+    ax.set_title('The Maze')
+    ax.set_xticks([])
+    ax.set_yticks([])
 
     # Give a color to each cell
-    rows, cols = maze.shape;
-    colored_maze = [[col_map[maze[j, i]] for i in range(cols)] for j in range(rows)];
+    rows, cols = maze.shape
+    colored_maze = [[col_map[maze[j, i]] for i in range(cols)] for j in range(rows)]
 
     # Create figure of the size of the maze
     fig = plt.figure(1, figsize=(cols, rows))
@@ -393,32 +393,32 @@ def draw_maze(maze):
                      cellColours=colored_maze,
                      cellLoc='center',
                      loc=(0, 0),
-                     edges='closed');
+                     edges='closed')
     # Modify the hight and width of the cells in the table
     tc = grid.properties()['children']
     for cell in tc:
-        cell.set_height(1.0 / rows);
-        cell.set_width(1.0 / cols);
+        cell.set_height(1.0 / rows)
+        cell.set_width(1.0 / cols)
 
 
 def animate_solution(maze, path):
     # Map a color to each cell in the maze
-    col_map = {0: WHITE, 1: BLACK, 2: LIGHT_GREEN, -6: LIGHT_RED, -1: LIGHT_RED};
+    col_map = {0: WHITE, 1: BLACK, 2: LIGHT_GREEN, -6: LIGHT_RED, -1: LIGHT_RED}
 
     # Size of the maze
-    rows, cols = maze.shape;
+    rows, cols = maze.shape
 
     # Create figure of the size of the maze
-    fig = plt.figure(1, figsize=(cols, rows));
+    fig = plt.figure(1, figsize=(cols, rows))
 
     # Remove the axis ticks and add title title
-    ax = plt.gca();
-    ax.set_title('Policy simulation');
-    ax.set_xticks([]);
-    ax.set_yticks([]);
+    ax = plt.gca()
+    ax.set_title('Policy simulation')
+    ax.set_xticks([])
+    ax.set_yticks([])
 
     # Give a color to each cell
-    colored_maze = [[col_map[maze[j, i]] for i in range(cols)] for j in range(rows)];
+    colored_maze = [[col_map[maze[j, i]] for i in range(cols)] for j in range(rows)]
 
     # Create figure of the size of the maze
     fig = plt.figure(1, figsize=(cols, rows))
@@ -428,13 +428,13 @@ def animate_solution(maze, path):
                      cellColours=colored_maze,
                      cellLoc='center',
                      loc=(0, 0),
-                     edges='closed');
+                     edges='closed')
 
     # Modify the hight and width of the cells in the table
     tc = grid.properties()['children']
     for cell in tc:
-        cell.set_height(1.0 / rows);
-        cell.set_width(1.0 / cols);
+        cell.set_height(1.0 / rows)
+        cell.set_width(1.0 / cols)
 
     # Update the color at each frame
     for i in range(len(path)):
