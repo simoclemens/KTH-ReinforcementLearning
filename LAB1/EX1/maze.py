@@ -229,6 +229,7 @@ class Maze:
         if method == 'ValIter':
             death_prob = 1/30
             life = np.random.geometric(death_prob)
+            print(life)
             # Initialize current state, next state and time
             t = 1
             s = self.map[start]
@@ -347,6 +348,7 @@ def value_iteration(env, death_p, epsilon):
     # Iteration counter
     n = 0
     gamma = 1
+    # gamma = 0.95
     tol = 0
     # Initialization of the VI
     for s in range(n_states):
@@ -358,7 +360,8 @@ def value_iteration(env, death_p, epsilon):
     while np.linalg.norm(V - BV) >= tol and n < 200:
         # Increment by one the numbers of iteration
         n += 1
-        gamma = (1-death_p)**n
+        gamma = ((1-death_p)**n)**0.5
+        # gamma = 0.95
         # Tolerance
         tol = (1 - gamma) * epsilon / gamma
         # Update the value function
@@ -373,6 +376,8 @@ def value_iteration(env, death_p, epsilon):
     # Compute policy
     policy = np.argmax(Q, 1)
     # Return the obtained policy
+    print(V)
+    print(policy)
     return V, policy
 
 
