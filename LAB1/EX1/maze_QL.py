@@ -177,96 +177,39 @@ class Maze:
     def simulate(self, start, policy, method):
 
         return None
-
-    def q_learning(self):
-        ns = len(self.states)
-        na = len(self.actions)
-        discount = self.gamma
-        lr = self.alpha
-        # initialization
-        self.allowed_movements()
-        # ADD YOUR CODE SNIPPET BETWEEN EX. 2.1
-        # Initialize a numpy array with ns state rows and na state columns with float values from 0.0 to 1.0.
-        Q = np.random.rand(ns, na)
-        # ADD YOUR CODE SNIPPET BETWEEN EX. 2.1
-
-        for s in range(ns):
-            list_pos = self.allowed_moves[s]
-            for i in range(4):
-                if i not in list_pos:
-                    Q[s, i] = np.nan
-
-        Q_old = Q.copy()
-
-        diff = np.infty
-        end_episode = False
-
-        init_pos_tuple = self.settings.init_pos_diver
-        init_pos = self.ind2state[(init_pos_tuple[0], init_pos_tuple[1])]
-        episode = 0
-
-        R_total = 0
-        current_total_steps = 0
-        steps = 0
-
-        # ADD YOUR CODE SNIPPET BETWEEN EX. 2.3
-        # Change the while loop to incorporate a threshold limit, to stop training when the mean difference
-        # in the Q table is lower than the threshold
-        while episode <= self.episode_max and diff > self.threshold:
-            # ADD YOUR CODE SNIPPET BETWEENEX. 2.3
-
-            s_current = init_pos
-            R_total = 0
-            steps = 0
-            while not end_episode:
-                # selection of action
-                list_pos = self.allowed_moves[s_current]
-
-                # ADD YOUR CODE SNIPPET BETWEEN EX 2.1 and 2.2
-                # Chose an action from all possible actions
-                eps_greedy_action = epsilon_greedy(Q, s_current, list_pos, current_total_steps, self.epsilon_initial,
-                                                   self.epsilon_final, self.annealing_timesteps, eps_type="linear")
-                action = eps_greedy_action
-                # ADD YOUR CODE SNIPPET BETWEEN EX 2.1 and 2.2
-
-                # ADD YOUR CODE SNIPPET BETWEEN EX 5
-                # Use the epsilon greedy algorithm to retrieve an action
-                # ADD YOUR CODE SNIPPET BETWEEN EX 5
-
-                # compute reward
-                action_str = self.action_list[action]
-                msg = {"action": action_str, "exploration": True}
-                self.sender(msg)
-
-                # wait response from game
-                msg = self.receiver()
-                R = msg["reward"]
-                R_total += R
-                s_next_tuple = msg["state"]
-                end_episode = msg["end_episode"]
-                s_next = self.ind2state[s_next_tuple]
-
-                # ADD YOUR CODE SNIPPET BETWEEN EX. 2.2
-                # Implement the Bellman Update equation to update Q
-                Q[s_current, action] += lr * (R + discount * np.nanmax(Q[s_next]) - Q[s_current, action])
-                # ADD YOUR CODE SNIPPET BETWEEN EX. 2.2
-
-                s_current = s_next
-                current_total_steps += 1
-                steps += 1
-
-            # ADD YOUR CODE SNIPPET BETWEEN EX. 2.3
-            # Compute the absolute value of the mean between the Q and Q-old
-            diff = np.absolute(np.nanmean(Q - Q_old))
-            # ADD YOUR CODE SNIPPET BETWEEN EX. 2.3
-            Q_old[:] = Q
-            print(
-                "Episode: {}, Steps {}, Diff: {:6e}, Total Reward: {}, Total Steps {}"
-                .format(episode, steps, diff, R_total, current_total_steps))
-            episode += 1
-            end_episode = False
-
+    
+    def q_learning(self, alpha, gamma, epsilon, start = (0, 0), testing=False, N = 1000):
+        Q = np.zeros((self.states, self.actions))
+        Q_c = Q.copy()
+        for k in range(N):
+            death_prob = 1/50
+            life = np.random.geometric(death_prob)
+            state = self.map[(start, self.exit, 0)]
+            t = 0
+            while t < life and self.states[state][0] != self.exit and  self.states[state][1] != self.states[state][0] :
+                if testing :
+                    action = np.argmax(Q[state])
+                    next_state = self.__move(state, action)
+                else :
+                    rand = np.random.uniform(0, 1)
+                    if rand < epsilon:
+                        action = np.random.randint(0, 4)
+                    else:
+                        action = np.argmax(Q[state])
+                    reward = self.__get_reward(state, action)
+                    next_state = self.__move(state, action)
+                    Q_c[state, action ] += 1
+                    Q = self.__update_Q(Q, state, action, reward, next_state, 1/Q_c[state, action]**alpha, gamma)
+                state = next_state
+                t += 1
         return Q
+
+
+    def __update_Q(self, Q, state, action, reward, next_state, alpha, gamma):
+        Q[state, action] = Q[state, action] + alpha * (reward + gamma * np.max(Q[next_state, :]) - Q[state, action])
+        return Q
+        
+
 
 def get_closer_pos(p_pos, m_positions):
 
