@@ -4,9 +4,6 @@ import time
 from IPython import display
 import random
 
-# Implemented methods
-methods = ['DynProg', 'ValIter']
-
 # Some colours
 LIGHT_RED = '#FFC4CC'
 LIGHT_GREEN = '#95FD99'
@@ -55,9 +52,6 @@ class Maze:
 
         self.n_actions = len(self.actions)
         self.n_states = len(self.states)
-
-        # define transition probabilities matrix
-        self.transition_probabilities = self.__transitions()
 
         self.exit = None
         self.key = None
@@ -129,7 +123,6 @@ class Maze:
             else:
                 return self.map[((row, col), (m_row, m_col), f_k)]
 
-
     def __get_reward (self, state, action):
         old_state = self.states[state]
         n_state = self.__move(state, action)
@@ -178,7 +171,7 @@ class Maze:
 
         return None
     
-    def q_learning(self, alpha, gamma, epsilon, start = (0, 0), testing=False, N = 1000):
+    def simulate_q_learning(self, alpha, gamma, epsilon, start = (0, 0), testing=False, N = 1000):
         Q = np.zeros((self.states, self.actions))
         Q_c = Q.copy()
         for k in range(N):
@@ -199,13 +192,13 @@ class Maze:
                     reward = self.__get_reward(state, action)
                     next_state = self.__move(state, action)
                     Q_c[state, action ] += 1
-                    Q = self.__update_Q(Q, state, action, reward, next_state, 1/Q_c[state, action]**alpha, gamma)
+                    Q = self.__Q_learning(Q, state, action, reward, next_state, 1/Q_c[state, action]**alpha, gamma)
                 state = next_state
                 t += 1
         return Q
 
 
-    def __update_Q(self, Q, state, action, reward, next_state, alpha, gamma):
+    def __Q_learning(self, Q, state, action, reward, next_state, alpha, gamma):
         Q[state, action] = Q[state, action] + alpha * (reward + gamma * np.max(Q[next_state, :]) - Q[state, action])
         return Q
         
