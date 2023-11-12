@@ -56,8 +56,17 @@ class Maze:
         self.n_actions = len(self.actions)
         self.n_states = len(self.states)
 
-        self.exit = None
+        rows ,cols = self.maze.shape
+
+        for i in range(rows):
+            for j in range(cols):
+                if maze[i, j] == 2:
+                    self.exit = (i, j)
         self.key = None
+
+        self.death_m_counter = 0
+        self.death_t_counter = 0
+        self.win_counter = 0
 
     def __actions(self):
         actions = dict()
@@ -168,88 +177,115 @@ class Maze:
             pos = next_positions[next_move]
 
         return pos
+    
 
-    def finished(self, state, death_prob):
+    def __Q_learning(self, Q, state, action, reward, next_state, alpha, gamma):
+            Q[state, action] = Q[state, action] + alpha * (reward + gamma * np.max(Q[next_state, :]) - Q[state, action])
+            return Q
+
+    def __SARSA(self, Q, state, action, reward, next_state, next_action, alpha, gamma):
+            Q[state, action] = Q[state, action] + alpha * (reward + gamma * Q[next_state, next_action] - Q[state, action])
+            return Q
+
+    def __finished(self, state, death_prob):
 
         current_s = self.states[state]
 
         if np.random.uniform(0, 1) < death_prob:
+            self.death_t_counter += 1
             return True
         elif current_s[0] == current_s[1]:
+            self.death_m_counter += 1
             return True
         elif current_s[0] == self.exit:
+            self.win_counter += 1
             return True
         else:
             return False
 
 
+    def get_n_states(self):
+        return self.n_states
+    
+    def get_n_actions(self):
+        return self.n_actions
 
-    def simulate(self, start=(0,0), num_episodes=1000, alpha=2/3, gamma=0.99, epsilon=0.1, method='Q-learnign', testing=False):
+    def simulate(self, start=(0,0), num_episodes=10000, alpha=2/3, gamma=0.99, epsilon=0.1, method='Q-learning', testing = False, Q = None):
         
-        Q = np.zeros((self.n_states, self.n_actions))
-        counter = np.zeros((self.n_states, self.n_actions))
+        self.death_m_counter = 0
+        self.death_t_counter = 0
+        self.win_counter = 0
 
         if testing:
-            num_episodes = 1
+            num_episodes = 100
+        else:
+            Q = np.zeros((self.n_states, self.n_actions))
+        
+        counter = np.zeros((self.n_states, self.n_actions))
 
         for _ in range(num_episodes):
             state = self.map[(start, self.exit, 0)]
             death_prob = 1/50
-            while True:
-                # Take action and observe next state and reward
+            if method == 'SARSA':
                 if np.random.rand() < epsilon:
                     action = np.random.choice(Q.shape[1])
                 else:
                     action = np.argmax(Q[state, :])
+            while True:
+                # Take action and observe next state and reward
+                
+                if method == 'Q-learning':
+                    if np.random.rand() < epsilon:
+                        action = np.random.choice(Q.shape[1])
+                    else:
+                        action = np.argmax(Q[state, :])
                 reward = self.__get_reward(state, action)
                 int_state = self.states[self.__move(state, action)]
                 m_pos = self.__minotaur_move(state)
                 next_state = self.map[(int_state[0], m_pos, int_state[2])]
-                done = self.finished(next_state, death_prob)
+                done = self.__finished(next_state, death_prob)
 
                 counter[state, action] += 1
                 n = counter[state,action]
                 step = 1/(n**alpha)
                 if method == 'Q-learning':
-                    Q = __Q_learning(Q, state, action, reward, next_state, step, gamma)
+                    #print(Q, state, action, reward, next_state, step, gamma)
+                    Q = self.__Q_learning(Q, state, action, reward, next_state, step, gamma)
                 elif method == 'SARSA':
                     # Choose next action using epsilon-greedy policy
                     if np.random.rand() < epsilon:
                         next_action = np.random.choice(Q.shape[1])
                     else:
                         next_action = np.argmax(Q[next_state, :])
-                    Q = __SARSA(Q, state, action, reward, next_state, next_action, step, gamma)
+                    Q = self.__SARSA(Q, state, action, reward, next_state, next_action, step, gamma)
                 else:
                     print('Method not implemented')
 
                 state = next_state
-
+                if method == 'SARSA':
+                    action = next_action
                 if done:
                     break
+        print('Win percentage: ' + str(self.win_counter*(100/num_episodes)) + "%")
+        print('Death by minotaur percentage: ' + str(self.death_m_counter*(100/num_episodes)) + "%")
+        print('Death by time percentage: ' + str(self.death_t_counter*(100/num_episodes)) + "%")
         return Q
-
-def __Q_learning(Q, state, action, reward, next_state, alpha, gamma):
-        Q[state, action] = Q[state, action] + alpha * (reward + gamma * np.max(Q[next_state, :]) - Q[state, action])
-        return Q
-
-def __SARSA(Q, state, action, reward, next_state, next_action, alpha, gamma):
-        Q[state, action] = Q[state, action] + alpha * (reward + gamma * Q[next_state, next_action] - Q[state, action])
 
 def get_closer_pos(p_pos, m_positions):
-    min = int("+inf")
+    min = None
     new_pos = None
     for m_pos in m_positions:
         dist = abs(p_pos[0] - m_pos[0]) + abs(p_pos[1] - m_pos[1])
-        if dist < min:
+        if min == None or dist < min:
             new_pos = m_pos
             min = dist
 
     return new_pos
 
 
-def draw_maze(maze):
+def draw_maze( maze):
     # Map a color to each cell in the maze
-    col_map = {0: WHITE, 1: BLACK, 2: LIGHT_GREEN, -6: LIGHT_RED, -1: LIGHT_RED}
+    col_map = {0: WHITE, 1: BLACK, 2: LIGHT_GREEN, 3: LIGHT_PURPLE, -6: LIGHT_RED, -1: LIGHT_RED}
 
     # Give a color to each cell
     rows, cols = maze.shape
@@ -286,7 +322,7 @@ def draw_maze(maze):
 
 def animate_solution(maze, path):
     # Map a color to each cell in the maze
-    col_map = {0: WHITE, 1: BLACK, 2: LIGHT_GREEN, -6: LIGHT_RED, -1: LIGHT_RED}
+    col_map = {0: WHITE, 1: BLACK, 2: LIGHT_GREEN, 3: LIGHT_PURPLE, -6: LIGHT_RED, -1: LIGHT_RED}
 
     # Size of the maze
     rows, cols = maze.shape
