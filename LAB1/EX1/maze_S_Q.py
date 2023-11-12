@@ -218,7 +218,7 @@ class Maze:
 
         if testing:
             num_episodes = 100
-        else:
+        elif Q == None:
             Q = np.zeros((self.n_states, self.n_actions))
         
         counter = np.zeros((self.n_states, self.n_actions))
