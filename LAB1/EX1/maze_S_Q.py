@@ -193,15 +193,15 @@ class Maze:
 
         if np.random.uniform(0, 1) < death_prob:
             self.death_t_counter += 1
-            return True
+            return True, 1
         elif current_s[0] == current_s[1]:
             self.death_m_counter += 1
-            return True
+            return True, 2
         elif current_s[0] == self.exit:
             self.win_counter += 1
-            return True
+            return True, 3
         else:
-            return False
+            return False, 0
 
 
     def get_n_states(self):
@@ -215,6 +215,7 @@ class Maze:
         self.death_m_counter = 0
         self.death_t_counter = 0
         self.win_counter = 0
+        mean_step = 0
 
         if testing: 
             num_episodes = 50000
@@ -231,6 +232,7 @@ class Maze:
                     action = np.random.choice(Q.shape[1])
                 else:
                     action = np.argmax(Q[state, :])
+            step_counter = 0
             while True:
                 # Take action and observe next state and reward
                 
@@ -243,7 +245,8 @@ class Maze:
                 int_state = self.states[self.__move(state, action)]
                 m_pos = self.__minotaur_move(state)
                 next_state = self.map[(int_state[0], m_pos, int_state[2])]
-                done = self.__finished(next_state, death_prob)
+                done, type_done = self.__finished(next_state, death_prob)
+                step_counter += 1
 
                 counter[state, action] += 1
                 n = counter[state,action]
@@ -269,11 +272,15 @@ class Maze:
                 if method == 'SARSA':
                     action = next_action
                 if done:
+                    if type_done == 3:
+                        mean_step += step_counter
                     break
         if testing:
+            mean_step = mean_step/self.win_counter
             print('Win percentage: ' + str(self.win_counter*(100/num_episodes)) + "%")
             print('Death by minotaur percentage: ' + str(self.death_m_counter*(100/num_episodes)) + "%")
             print('Death by time percentage: ' + str(self.death_t_counter*(100/num_episodes)) + "%")
+            print('Mean step on win: ' + str(mean_step))
         return Q
 
 def get_closer_pos(p_pos, m_positions):
