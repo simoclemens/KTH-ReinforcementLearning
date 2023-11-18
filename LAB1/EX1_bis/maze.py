@@ -34,30 +34,33 @@ class Maze:
     }
 
     # Reward values
-    STEP_REWARD = 0
-    GOAL_REWARD = 1
+    STEP_REWARD = -1
+    GOAL_REWARD = 100
     IMPOSSIBLE_REWARD = -100
-    MINOTAUR_REWARD = 0
+    MINOTAUR_REWARD = -100
+
 
     def __init__(self, maze, weights=None, random_rewards=False):
         """ Constructor of the environment Maze.
         """
         # maze structure
         self.maze = maze
+
         # define possible player actions
         self.actions = self.__actions()
 
-        #define possible minotaur actions
-        self.minotaur_actions=self.__minotaur_actions()
+        # define possible minotaur actions
+        self.minotaur_actions = self.__minotaur_actions()
 
         # define possible states
-        self.states, self.map, self.exit= self.__states()
+        self.states, self.map, self.exit = self.__states()
 
         self.n_actions = len(self.actions)
         self.n_states = len(self.states)
 
         # define transition probabilities matrix
         self.transition_probabilities = self.__transitions()
+
         # define rewards
         self.rewards = self.__rewards(weights=weights, random_rewards=random_rewards)
 
@@ -205,7 +208,6 @@ class Maze:
             while t < horizon - 1:
                 m_pos = self.__minotaur_move(s)
                 # Move to next state given the policy and the current state
-                print(policy[s, t])
                 p_pos = self.states[self.__move(s, policy[s, t])][0]
                 # Modify the state according to the random move of the minotaur
                 next_s = self.map[(p_pos, m_pos)]
@@ -218,7 +220,6 @@ class Maze:
         if method == 'ValIter':
             death_prob = 1/30
             life = np.random.geometric(death_prob)
-            print(life)
             # Initialize current state, next state and time
             t = 1
             s = self.map[start]
@@ -279,7 +280,7 @@ def dynamic_programming(env, horizon):
     # - Action space
     # - The finite horizon
     p = env.transition_probabilities
-    r = env.dynamic_rewards
+    r = env.rewards
     n_states = env.n_states
     n_actions = env.n_actions
     T = horizon
@@ -290,7 +291,7 @@ def dynamic_programming(env, horizon):
     Q = np.zeros((n_states, n_actions))
 
     # Initialization
-    Q = np.copy(r[:, :, T-1])
+    Q = np.copy(r)
     V[:, T] = np.max(Q, 1)
     policy[:, T] = np.argmax(Q, 1)
 
@@ -300,15 +301,18 @@ def dynamic_programming(env, horizon):
         for s in range(n_states):
             for a in range(n_actions):
                 # Update of the temporary Q values
-                Q[s, a] = r[s, a, t] + np.dot(p[:, s, a], V[:, t + 1])
+                Q[s, a] = r[s, a] + np.dot(p[:, s, a], V[:, t + 1])
         # Update by taking the maximum Q value w.r.t the action a
         V[:, t] = np.max(Q, 1)
         # The optimal action is the one that maximizes the Q function
         policy[:, t] = np.argmax(Q, 1)
+
+    s_idx = env.map[((0, 0), (6, 5))]
+    print(V[s_idx][0])
     return V, policy
 
 
-def value_iteration(env, gamma, epsilon):
+def value_iteration(env, death_p, epsilon):
     """ Solves the shortest path problem using value iteration
         :input Maze env           : The maze environment in which we seek to
                                     find the shortest path.
@@ -336,7 +340,8 @@ def value_iteration(env, gamma, epsilon):
     BV = np.zeros(n_states)
     # Iteration counter
     n = 0
-    tol = (1 - gamma) * epsilon / gamma
+    gamma = 1
+    tol = 0
     # Initialization of the VI
     for s in range(n_states):
         for a in range(n_actions):
@@ -344,9 +349,12 @@ def value_iteration(env, gamma, epsilon):
     BV = np.max(Q, 1)
 
     # Iterate until convergence
-    while np.linalg.norm(V - BV) >= tol and n < 2000:
+    while np.linalg.norm(V - BV) >= tol and n < 200:
         # Increment by one the numbers of iteration
         n += 1
+        gamma = (1-death_p)**n
+        # Tolerance
+        tol = (1 - gamma) * epsilon / gamma
         # Update the value function
         V = np.copy(BV)
         # Compute the new BV
