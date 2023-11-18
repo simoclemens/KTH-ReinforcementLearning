@@ -210,15 +210,15 @@ class Maze:
     def get_n_actions(self):
         return self.n_actions
 
-    def simulate(self, start=(0,0), num_episodes=10000, alpha=2/3, gamma=0.99, epsilon=0.1, method='Q-learning', testing = False, Q = None):
+    def simulate(self, start=(0,0), num_episodes=100000, alpha=2/3, gamma=0.99, epsilon=0.1, method='Q-learning', testing = False, Q = None):
         
         self.death_m_counter = 0
         self.death_t_counter = 0
         self.win_counter = 0
 
-        if testing:
-            num_episodes = 100
-        elif Q == None:
+        if testing: 
+            num_episodes = 50000
+        elif Q is None:
             Q = np.zeros((self.n_states, self.n_actions))
         
         counter = np.zeros((self.n_states, self.n_actions))
@@ -235,7 +235,7 @@ class Maze:
                 # Take action and observe next state and reward
                 
                 if method == 'Q-learning':
-                    if np.random.rand() < epsilon:
+                    if np.random.rand() < epsilon and not testing:
                         action = np.random.choice(Q.shape[1])
                     else:
                         action = np.argmax(Q[state, :])
@@ -248,27 +248,32 @@ class Maze:
                 counter[state, action] += 1
                 n = counter[state,action]
                 step = 1/(n**alpha)
-                if method == 'Q-learning':
-                    #print(Q, state, action, reward, next_state, step, gamma)
-                    Q = self.__Q_learning(Q, state, action, reward, next_state, step, gamma)
-                elif method == 'SARSA':
-                    # Choose next action using epsilon-greedy policy
-                    if np.random.rand() < epsilon:
-                        next_action = np.random.choice(Q.shape[1])
-                    else:
+                if testing:
+                    if method == 'SARSA':
                         next_action = np.argmax(Q[next_state, :])
-                    Q = self.__SARSA(Q, state, action, reward, next_state, next_action, step, gamma)
                 else:
-                    print('Method not implemented')
+                    if method == 'Q-learning':
+                        #print(Q, state, action, reward, next_state, step, gamma)
+                        Q = self.__Q_learning(Q, state, action, reward, next_state, step, gamma)
+                    elif method == 'SARSA':
+                        # Choose next action using epsilon-greedy policy
+                        if np.random.rand() < epsilon:
+                            next_action = np.random.choice(Q.shape[1])
+                        else:
+                            next_action = np.argmax(Q[next_state, :])
+                        Q = self.__SARSA(Q, state, action, reward, next_state, next_action, step, gamma)
+                    else:
+                        print('Method not implemented')
 
                 state = next_state
                 if method == 'SARSA':
                     action = next_action
                 if done:
                     break
-        print('Win percentage: ' + str(self.win_counter*(100/num_episodes)) + "%")
-        print('Death by minotaur percentage: ' + str(self.death_m_counter*(100/num_episodes)) + "%")
-        print('Death by time percentage: ' + str(self.death_t_counter*(100/num_episodes)) + "%")
+        if testing:
+            print('Win percentage: ' + str(self.win_counter*(100/num_episodes)) + "%")
+            print('Death by minotaur percentage: ' + str(self.death_m_counter*(100/num_episodes)) + "%")
+            print('Death by time percentage: ' + str(self.death_t_counter*(100/num_episodes)) + "%")
         return Q
 
 def get_closer_pos(p_pos, m_positions):
