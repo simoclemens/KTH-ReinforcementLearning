@@ -22,24 +22,25 @@ import matplotlib.pyplot as plt
 import torch.nn as nn
 
 # Define Fourier orders
-orders = [[1, 1], [1, 2]]
+max_ord = 2
+orders = np.array([[i,j] for i in range(max_ord+1) for j in range(max_ord+1)])
 
 # Import and initialize Mountain Car Environment
 env = gym.make('MountainCar-v0')
 env.reset()
 
 n = len(env.observation_space.low)  # State space dimensionality
-m = env.action_space.n               # Number of actions
+m = env.action_space.n  # Number of actions
 p = len(orders)
 low, high = env.observation_space.low, env.observation_space.high
 
 # Parameters
-N_episodes = 1000  # Number of episodes to run for training
-gamma = 0.3  # Value of gamma
-lamda = 0.5  # Lamda value
-alpha = 0.3  # Learning rate
-epsilon = 0.5  # Greedy probability
-momentum = 0.9  # Momentum parameter
+N_episodes = 10000  # Number of episodes to run for training
+gamma = 0.99  # Value of gamma
+lamda = 0.9  # Lamda value
+alpha = 0.01 # Learning rate
+epsilon = 0  # Greedy probability
+momentum = 0.2  # Momentum parameter
 
 # Reward
 episode_reward_list = []  # Used to save episodes reward
@@ -50,6 +51,13 @@ v = np.random.randn(m, p)
 c = np.array(orders)
 
 c_norms = np.linalg.norm(c, axis=1)
+for i in range(c_norms.shape[0]):
+    if c_norms[i] == 0:
+        c_norms[i] = 1
+
+alpha_scaled = alpha/c_norms
+
+
 
 # FUNCTIONS
 # Fourier's basis extraction
@@ -58,30 +66,38 @@ def fourier_basis(state):
     fourier_eq = np.cos(np.pi * f_c)
     return fourier_eq
 
+
 # Q values computation
 def q_function(state):
     f_eq = fourier_basis(state)
     q_v = np.dot(w, f_eq.T)
     return q_v
 
+
 # Z matrix update
 def update_z(z, gamma, lamda, gradient, action):
-    z = gamma*lamda*z
+    z = gamma * lamda * z
     z[action, :] = z[action, :] + gradient
     return z
 
+
 # Weights update (SGD)
 def update_w(w, z, v, alpha, delta, momentum):
+    '''
+    z_scaled = np.zeros((m,p))
 
-    #weighted_alpha = np.full(2, alpha)
+    for i in range(m):
+        z_scaled[i, :] = z[i, :] * alpha_scaled[i]
+    '''
 
-    v = momentum*v + alpha*delta*z
-    w = w + m*v + alpha*delta*z
+
+    v = momentum * v + delta * alpha * z
+    w = w + v
 
     return w
 
-def epsilon_greedy_policy(Q_state, epsilon):
 
+def epsilon_greedy_policy(Q_state, epsilon):
     if np.random.rand() < epsilon:
         # Explore: choose a random action
         return np.random.choice(m)
@@ -97,10 +113,11 @@ def running_average(x, N):
     '''
     if len(x) >= N:
         y = np.copy(x)
-        y[N-1:] = np.convolve(x, np.ones((N, )) / N, mode='valid')
+        y[N - 1:] = np.convolve(x, np.ones((N,)) / N, mode='valid')
     else:
         y = np.zeros_like(x)
     return y
+
 
 def scale_state_variables(s, low=env.observation_space.low, high=env.observation_space.high):
     ''' Rescaling of s to the box [0,1]^2 '''
@@ -108,9 +125,13 @@ def scale_state_variables(s, low=env.observation_space.low, high=env.observation
     x = (s - low) / (high - low)
     return x
 
+
 # Training process
 for i in range(N_episodes):
-    print("EPISODE:" + str(i))
+
+    if i % 1 == 0 and i != 0:
+        print("EPISODE:" + str(i) + " -> " + str(episode_reward_list[-1]))
+        print(w)
 
     # Reset environment data
     done = False
@@ -124,22 +145,28 @@ for i in range(N_episodes):
     q_state = q_function(state)
     # Select action with epsilon greedy policy
     action = epsilon_greedy_policy(q_state, epsilon)
+    # Initialize the move to zero
     move = 0
 
     while not done and move < 200:
+
+        # Increase move index
         move += 1
 
         # Take the chosen action
         next_state, reward, done, _, _ = env.step(action)
+
         # Scale state variables
         next_state = scale_state_variables(next_state)
+
         # Compute Q values
         q_next_state = q_function(next_state)
+
         # Select next action with epsilon-greedy policy
-        next_action = epsilon_greedy_policy(q_state, epsilon)
+        next_action = epsilon_greedy_policy(q_next_state, epsilon)
 
         # Compute temporal difference error
-        delta = reward + gamma*q_next_state[next_action] - q_state[action]
+        delta = reward + gamma * q_next_state[next_action] - q_state[action]
 
         # Compute the gradient -> in our case it is represented by the Fourier's coefficient themselves
         gradient = fourier_basis(state)
@@ -156,9 +183,12 @@ for i in range(N_episodes):
         # Update episode reward
         total_episode_reward += reward
 
-        # Update state for next iteration
+        # Update state and action for next iteration
         state = next_state
         action = next_action
+
+    if move != 200:
+        print("VICTORY")
 
     # Append episode reward
     episode_reward_list.append(total_episode_reward)
