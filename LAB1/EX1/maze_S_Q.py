@@ -221,7 +221,6 @@ class Maze:
             num_episodes = 50000
         elif Q is None:
             Q = np.zeros((self.n_states, self.n_actions))
-        
         counter = np.zeros((self.n_states, self.n_actions))
 
         for _ in range(num_episodes):
