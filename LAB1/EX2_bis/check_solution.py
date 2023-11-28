@@ -38,7 +38,7 @@ def Qvalues(s, w):
     return np.dot(w, s)
 
 # Parameters
-N_EPISODES = 50            # Number of episodes to run for trainings
+N_EPISODES = 50      # Number of episodes to run for trainings
 CONFIDENCE_PASS = -135
 
 # Fourier basis

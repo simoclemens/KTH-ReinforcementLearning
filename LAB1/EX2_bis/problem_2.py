@@ -24,12 +24,12 @@ l = np.shape(ETA)[0]
 W = np.zeros((k, l))
 
 # Parameters
-N_episodes = 1200  # Number of training episodes
+N_episodes = 1000  # Number of training episodes
 momentum = 0.2  # SGD momentum
-epsilon = 0  # Randomization parameter
+epsilon = 0.001  # Randomization parameter
 discount_factor = 1.  # Value of gamma
 eligibility_trace = 0.1
-alpha_set = 0.2
+alpha_set = 0.10
 
 counter_reduction = 0
 
@@ -67,7 +67,6 @@ def scale_state_variables(s, low=low, high=high):
 # Fourier's basis transformation
 def basis_function(eta, state):
     bases = np.cos(np.pi * np.matmul(eta, state))
-
     return bases
 
 
@@ -143,19 +142,19 @@ for i in range(N_episodes):
         # Update episode reward
         total_episode_reward += reward
 
-        # update z
-        z = update_z(z, discount_factor, eligibility_trace, basis)
-
         # compute temporal distance error
         delta_t = reward + discount_factor * Q_next[action_next] - Q[action]
 
+        # update z
+        z = update_z(z, discount_factor, eligibility_trace, basis)
         # update W
         W = update_w(W, z, momentum, velocity, delta_t, alpha)
 
     if alpha_reduction and total_episode_reward > -200:
         # ALPHA REDUCTION WORKS EXTREMELLY WELL!!!
         # If win, scale alpha by .8 or .6 if the agent wins
-        alpha *= 0.9 - 0.2 * (total_episode_reward > -130)
+        # alpha *= 0.9 - 0.2 * (total_episode_reward > -130)
+        alpha *= 0.6
 
     # Append episode reward
     episode_reward_list.append(total_episode_reward)
@@ -225,4 +224,4 @@ else:
     ax.set_xlabel('Eligibility Trace value')
     ax.set_ylabel('Reward')
     ax.set_title('Mean reward due to eligibility trace parameter')
-    fig.show()
+    fig.sho
