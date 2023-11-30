@@ -215,7 +215,7 @@ class Maze:
             while t < horizon - 1:
                 m_pos = self.__minotaur_move(s)
                 # Move to next state given the policy and the current state
-                p_pos = self.states[self.__move(s, policy[s])][0]
+                p_pos = self.states[self.__move(s, policy[s, t])][0]
                 # Modify the state according to the random move of the minotaur
                 next_s = self.map[(p_pos, m_pos)]
                 # Add the position in the maze corresponding to the next state
