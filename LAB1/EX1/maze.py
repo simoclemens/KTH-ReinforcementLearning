@@ -72,7 +72,6 @@ class Maze:
 
     def __minotaur_actions(self):
         actions = dict()
-        actions[self.STAY] = (0, 0)
         actions[self.MOVE_LEFT] = (0, -1)
         actions[self.MOVE_RIGHT] = (0, 1)
         actions[self.MOVE_UP] = (-1, 0)
