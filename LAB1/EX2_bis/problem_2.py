@@ -24,12 +24,12 @@ l = np.shape(ETA)[0]
 W = np.zeros((k, l))
 
 # Parameters
-N_episodes = 1000  # Number of training episodes
+N_episodes = 600  # Number of training episodes
 momentum = 0.2  # SGD momentum
-epsilon = 0.001  # Randomization parameter
-discount_factor = 1.  # Value of gamma
+epsilon = 0  # Randomization parameter
+discount_factor = 1.0  # Value of gamma
 eligibility_trace = 0.1
-alpha_set = 0.10
+alpha_set = 0.1
 
 counter_reduction = 0
 
@@ -153,8 +153,8 @@ for i in range(N_episodes):
     if alpha_reduction and total_episode_reward > -200:
         # ALPHA REDUCTION WORKS EXTREMELLY WELL!!!
         # If win, scale alpha by .8 or .6 if the agent wins
-        # alpha *= 0.9 - 0.2 * (total_episode_reward > -130)
-        alpha *= 0.6
+        # alpha *= 0.6
+        alpha *= (0.9 - 0.3 * (total_episode_reward / -200))
 
     # Append episode reward
     episode_reward_list.append(total_episode_reward)
@@ -212,9 +212,9 @@ else:
     std_less_reward_episode_list.append(np.mean(episode_reward_list) - np.std(episode_reward_list))
 
     fig, ax = plt.subplots(1)
-    default_x_ticks = range(len(eligibility_trace))
-    ax.plot(default_x_ticks, mean_reward_episode_list, color='blue')
-    ax.fill_between(default_x_ticks, std_less_reward_episode_list, std_plus_reward_episode_list, alpha=0.3)
+    #default_x_ticks = range(eligibility_trace)
+    ax.plot(mean_reward_episode_list, color='blue')
+    ax.fill_between(std_less_reward_episode_list, std_plus_reward_episode_list, alpha=0.3)
 
     # ax.fill_between(default_x_ticks, std_plus_reward_episode_list, mu1-sigma1, facecolor='blue', alpha=0.5)
 
@@ -224,4 +224,4 @@ else:
     ax.set_xlabel('Eligibility Trace value')
     ax.set_ylabel('Reward')
     ax.set_title('Mean reward due to eligibility trace parameter')
-    fig.sho
+    fig.show()
