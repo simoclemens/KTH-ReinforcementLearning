@@ -53,3 +53,20 @@ plt.title('Avg total reward as function of eligibility trace')
 
 # Show the plot
 plt.show()
+
+
+# Sample data
+x_values = np.array(range(1,31))
+y_values = np.array([0 for _ in range(1,15)]+[1 for _ in range(15, 31)])
+
+# Create a line plot
+plt.plot(x_values, y_values, marker='o', linestyle='-')
+
+# Add labels and title
+plt.xlabel('Time horizon')
+plt.ylabel('Probability')
+plt.title('Probability of exiting maze')
+
+
+# Show the plot
+plt.show()
