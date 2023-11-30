@@ -223,7 +223,8 @@ class Maze:
             Q = np.zeros((self.n_states, self.n_actions))
         counter = np.zeros((self.n_states, self.n_actions))
 
-        for _ in range(num_episodes):
+        reward_list = []
+        for ep in range(num_episodes):
             state = self.map[(start, self.exit, 0)]
             death_prob = 1/50
             if method == 'SARSA':
@@ -232,6 +233,7 @@ class Maze:
                 else:
                     action = np.argmax(Q[state, :])
             step_counter = 0
+            episodes_reward = 0
             while True:
                 # Take action and observe next state and reward
                 
@@ -241,6 +243,7 @@ class Maze:
                     else:
                         action = np.argmax(Q[state, :])
                 reward = self.__get_reward(state, action)
+                episodes_reward += reward
                 int_state = self.states[self.__move(state, action)]
                 m_pos = self.__minotaur_move(state)
                 next_state = self.map[(int_state[0], m_pos, int_state[2])]
@@ -274,13 +277,17 @@ class Maze:
                     if type_done == 3:
                         mean_step += step_counter
                     break
+            if ep % 1000 == 0:
+                reward_list.append(episodes_reward)
+
+        print("FINITO!!")
         if testing:
             mean_step = mean_step/self.win_counter
             print('Win percentage: ' + str(self.win_counter*(100/num_episodes)) + "%")
             print('Death by minotaur percentage: ' + str(self.death_m_counter*(100/num_episodes)) + "%")
             print('Death by time percentage: ' + str(self.death_t_counter*(100/num_episodes)) + "%")
             print('Mean step on win: ' + str(mean_step))
-        return Q
+        return Q, reward_list
 
 def get_closer_pos(p_pos, m_positions):
     min = None
@@ -392,3 +399,6 @@ def animate_solution(maze, path):
         display.display(fig)
         display.clear_output(wait=True)
         time.sleep(1)
+
+def plot_convergence(reward_list):
+    plt.plot(range(len(reward_list)), reward_list)
