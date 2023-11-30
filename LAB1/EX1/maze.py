@@ -72,6 +72,7 @@ class Maze:
 
     def __minotaur_actions(self):
         actions = dict()
+        actions[self.STAY] = (0, 0)
         actions[self.MOVE_LEFT] = (0, -1)
         actions[self.MOVE_RIGHT] = (0, 1)
         actions[self.MOVE_UP] = (-1, 0)
@@ -344,8 +345,8 @@ def value_iteration(env, death_p, epsilon):
     BV = np.zeros(n_states)
     # Iteration counter
     n = 0
-    gamma = 1
-    tol = 0
+    gamma = death_p
+    tol = (1 - gamma) * epsilon / gamma
     # Initialization of the VI
     for s in range(n_states):
         for a in range(n_actions):
@@ -356,9 +357,6 @@ def value_iteration(env, death_p, epsilon):
     while np.linalg.norm(V - BV) >= tol and n < 200:
         # Increment by one the numbers of iteration
         n += 1
-        gamma = (1 - death_p) ** n
-        # Tolerance
-        tol = (1 - gamma) * epsilon / gamma
         # Update the value function
         V = np.copy(BV)
         # Compute the new BV

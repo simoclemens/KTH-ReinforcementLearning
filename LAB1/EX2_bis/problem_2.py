@@ -151,10 +151,8 @@ for i in range(N_episodes):
         W = update_w(W, z, momentum, velocity, delta_t, alpha)
 
     if alpha_reduction and total_episode_reward > -200:
-        # ALPHA REDUCTION WORKS EXTREMELLY WELL!!!
-        # If win, scale alpha by .8 or .6 if the agent wins
         # alpha *= 0.6
-        alpha *= (0.9 - 0.3 * (total_episode_reward / -200))
+        alpha *= (0.8 - 0.05 * (-200 / total_episode_reward))
 
     # Append episode reward
     episode_reward_list.append(total_episode_reward)
