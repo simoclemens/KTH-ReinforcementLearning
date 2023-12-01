@@ -1,3 +1,4 @@
+# Gustavo Mazzanti (19991119-T519), Simone Clemente (20001104-T332)
 import numpy as np
 import matplotlib.pyplot as plt
 import time
@@ -217,7 +218,7 @@ class Maze:
             while t < horizon - 1:
                 m_pos = self.__minotaur_move(s)
                 # Move to next state given the policy and the current state
-                p_pos = self.states[self.__move(s, policy[s])][0]
+                p_pos = self.states[self.__move(s, policy[s, t])][0]
                 # Modify the state according to the random move of the minotaur
                 next_s = self.map[(p_pos, m_pos)]
                 # Add the position in the maze corresponding to the next state
@@ -229,7 +230,6 @@ class Maze:
         if method == 'ValIter':
             death_prob = 1/30
             life = np.random.geometric(death_prob)
-            print(life)
             # Initialize current state, next state and time
             t = 1
             s = self.map[start]
@@ -376,8 +376,6 @@ def value_iteration(env, death_p, epsilon):
     # Compute policy
     policy = np.argmax(Q, 1)
     # Return the obtained policy
-    print(V)
-    print(policy)
     return V, policy
 
 

@@ -1,3 +1,4 @@
+#Gustavo Mazzanti (19991119-T519), Simone Clemente (20001104-T332)
 import numpy as np
 import matplotlib.pyplot as plt
 import time
@@ -264,7 +265,6 @@ class Maze:
                         next_action = np.argmax(Q[next_state, :])
                 else:
                     if method == 'Q-learning':
-                        #print(Q, state, action, reward, next_state, step, gamma)
                         Q = self.__Q_learning(Q, state, action, reward, next_state, step, gamma)
                     elif method == 'SARSA':
                         # Choose next action using epsilon-greedy policy
@@ -286,7 +286,6 @@ class Maze:
             if ep % 1000 == 0:
                 reward_list.append(episodes_reward)
 
-        print("FINITO!!")
         if testing:
             mean_step = mean_step/self.win_counter
             print('Win percentage: ' + str(self.win_counter*(100/num_episodes)) + "%")
