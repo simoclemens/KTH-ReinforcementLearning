@@ -210,7 +210,7 @@ class Maze:
     def get_n_actions(self):
         return self.n_actions
 
-    def simulate(self, start=(0,0), num_episodes=100000, alpha=2/3, gamma=0.99, epsilon=0.1, method='Q-learning', testing = False, Q = None):
+    def simulate(self, start=(0,0), num_episodes=100000, alpha=2/3, gamma=0.99, epsilon=0.1, method='Q-learning', testing = False, Q = None, dynamic_epsilon = False):
         
         self.death_m_counter = 0
         self.death_t_counter = 0
@@ -224,7 +224,11 @@ class Maze:
         counter = np.zeros((self.n_states, self.n_actions))
 
         reward_list = []
+        value_function = []
+        initial_state = self.map[(start, self.exit, 0)]
         for ep in range(num_episodes):
+            if dynamic_epsilon:
+                epsilon = 1/((ep+1)**gamma)
             state = self.map[(start, self.exit, 0)]
             death_prob = 1/50
             if method == 'SARSA':
@@ -237,6 +241,8 @@ class Maze:
             while True:
                 # Take action and observe next state and reward
                 
+                if state == initial_state:
+                    value_function.append(Q[state, np.argmax(Q[state, :])])
                 if method == 'Q-learning':
                     if np.random.rand() < epsilon and not testing:
                         action = np.random.choice(Q.shape[1])
@@ -287,7 +293,7 @@ class Maze:
             print('Death by minotaur percentage: ' + str(self.death_m_counter*(100/num_episodes)) + "%")
             print('Death by time percentage: ' + str(self.death_t_counter*(100/num_episodes)) + "%")
             print('Mean step on win: ' + str(mean_step))
-        return Q, reward_list
+        return Q, reward_list, value_function
 
 def get_closer_pos(p_pos, m_positions):
     min = None
@@ -402,3 +408,5 @@ def animate_solution(maze, path):
 
 def plot_convergence(reward_list):
     plt.plot(range(len(reward_list)), reward_list)
+    plt.xlabel('Episodes')
+    plt.ylabel('Reward')
