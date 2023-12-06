@@ -1,4 +1,4 @@
-# Authors: Simone Clemente (20001104-T332), Gustavo Mazzanti(19991119-T519)
+# Authors: Simone Clemente (20001104-T332), Gustavo Mazzanti (19991119-T519)
 # LAB01: Exercise 2
 
 
@@ -27,7 +27,7 @@ W = np.zeros((k, l))
 # Parameters
 N_episodes = 600  # Number of training episodes
 momentum = 0.2  # SGD momentum
-epsilon = 0.0001  # Randomization parameter
+epsilon = 0.0001 # Randomization parameter
 discount_factor = 1.0  # Value of gamma
 eligibility_trace = 0.1
 alpha_set = 0.1
@@ -37,14 +37,11 @@ counter_reduction = 0
 alpha_reduction = True
 scaling_basis = True
 
-exercise_mean = False
-custom = True
+custom = False
 
 # Reward
 episode_reward_list = []  # Used to save episodes reward
-mean_reward_episode_list = []  # Used to calcular mean reward for each episode
-std_plus_reward_episode_list = []  # Used to calcular std reward for each episode
-std_less_reward_episode_list = []
+mean_reward_episode_list = []  # Used to calculate mean reward for each episode
 
 
 # Functions used during training
@@ -78,6 +75,7 @@ def Q_function(state):
     return Q
 
 
+# Epsilon greedy policy
 def epsilon_greedy_policy(Q, epsilon):
     if custom:
         epsilon = 0.05
@@ -89,7 +87,7 @@ def epsilon_greedy_policy(Q, epsilon):
             else:
                 return np.argmax(Q)
     else:
-        """Function to choose action"""
+
         if np.random.uniform(0, 1) < epsilon:
             action = np.random.choice(np.arange(k))
         else:
@@ -148,7 +146,7 @@ for i in range(N_episodes):
         # Update state for next iteration
         state = next_state
         next_basis = basis_function(ETA, next_state)
-        Q_next = Q_function(next_basis)  # Update Q(state,action)
+        Q_next = Q_function(next_basis)
         action_next = np.argmax(Q_next)
 
         # Update episode reward
@@ -164,7 +162,6 @@ for i in range(N_episodes):
 
     if alpha_reduction and total_episode_reward > -200:
         alpha *= 0.6
-        # alpha *= (0.9 - 0.05 * (-200 / total_episode_reward))
 
     # Append episode reward
     episode_reward_list.append(total_episode_reward)
@@ -175,42 +172,4 @@ env.close()
 results = {'W': W, "N": ETA}
 with open("weights.pkl", 'wb') as file:
     pickle.dump(results, file)
-
-if not exercise_mean:
-    # Plot Rewards
-    plt.plot([i for i in range(1, N_episodes + 1)], episode_reward_list, label='Episode reward')
-    plt.plot([i for i in range(1, N_episodes + 1)], running_average(episode_reward_list, 10),
-             label='Average episode reward')
-    plt.xlabel('Episodes')
-    plt.ylabel('Total episode reward')
-    plt.title('Total Reward vs Episodes')
-    plt.legend()
-    plt.grid(alpha=0.3)
-    plt.show()
-
-    # Plot optimal val func
-    s0 = np.linspace(0, 1, 100)
-    s1 = np.linspace(0, 1, 100)
-    X, Y = np.meshgrid(s0, s1)
-    Z = np.array([[max(np.dot(W, basis_function(ETA, np.array([p, v])))) for p in s0] for v in s1])
-    fig, ax = plt.subplots()
-    surf = ax.pcolormesh(X, Y, Z, shading='auto')
-    plt.xlabel('Position')
-    plt.ylabel('Velocity')
-    plt.title('V*(pos,vel)')
-    fig.colorbar(surf, shrink=0.5, aspect=5)
-    plt.show()
-
-    # Plot optimal policy
-    s0 = np.linspace(0, 1, 100)
-    s1 = np.linspace(0, 1, 100)
-    X, Y = np.meshgrid(s0, s1)
-    Z = np.array([[np.argmax(np.dot(W, basis_function(ETA, np.array([p, v])))) for p in s0] for v in s1])
-    fig, ax = plt.subplots()
-    surf = ax.pcolormesh(X, Y, Z, shading='auto')
-    plt.xlabel('Position')
-    plt.ylabel('Velocity')
-    plt.title('Policy (pos,vel)')
-    fig.colorbar(surf, shrink=0.5, aspect=5)
-    plt.show()
 
