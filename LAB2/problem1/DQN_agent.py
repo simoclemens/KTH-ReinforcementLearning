@@ -15,6 +15,27 @@
 
 # Load packages
 import numpy as np
+import torch
+import torch.nn as nn
+import torch.optim as optim
+
+
+class QNetwork(nn.Module):
+    def __init__(self, input_size, output_size):
+        super().__init__()
+
+        self.input_layer = nn.Linear(input_size, 32)
+        self.input_layer_activation = nn.ReLU()
+
+        self.output_layer = nn.Linear(32, output_size)
+
+    def forward(self, x):
+        x = self.input_layer(x)
+        x = self.input_layer_activation(x)
+        out = self.output_layer(x)
+
+        return out
+
 
 class Agent(object):
     ''' Base agent class, used as a parent class
@@ -26,21 +47,56 @@ class Agent(object):
             n_actions (int): where we store the number of actions
             last_action (int): last action taken by the agent
     '''
-    def __init__(self, n_actions: int):
+
+    def __init__(self, n_actions: int, lr):
+        self.gpu = "cuda"
+        self.cpu = "cpu"
         self.n_actions = n_actions
         self.last_action = None
+        self.main_network = QNetwork(8, n_actions).to(self.gpu)
+        self.target_network = QNetwork(8, n_actions)
+        self.target_network.load_state_dict(self.main_network.state_dict())
+        self.optimizer = optim.Adam(self.main_network.parameters(), lr=lr)
 
-    def forward(self, state: np.ndarray):
+    def forward(self, state: np.ndarray, epsilon):
         ''' Performs a forward computation '''
-        pass
 
-    def backward(self):
+        if np.random.uniform(0, 1) < epsilon:
+            action = np.random.randint(0, self.n_actions)
+        else:
+            state = torch.tensor(state).to(self.gpu)
+            out = self.main_network(state).to(self.cpu)
+            action = torch.argmax(out).item()
+        return action
+
+    def backward(self, states, actions, target_states, N):
         ''' Performs a backward pass on the network '''
-        pass
+
+        self.optimizer.zero_grad()
+        # states, actions, rewards, next_states, dones = buffer.sample_batch(3)
+        Q_values = self.main_network(torch.tensor(np.array(states), requires_grad=True, dtype=torch.float32).to(self.gpu))
+        Q_tensor = torch.zeros(N, requires_grad=False, dtype=torch.float32)
+
+        # Get Q(s_i, a_i)
+        for i in range(N):
+            Q_tensor[i] = Q_values[i, actions[i]]
+
+        Q_tensor = Q_tensor.to(self.gpu)
+
+        target_values = torch.tensor(target_states, requires_grad=True, dtype=torch.float32).to(self.gpu)
+
+        loss = nn.functional.mse_loss(Q_tensor, target_values)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.main_network.parameters(), 1)
+        self.optimizer.step()
+
+    def updateTargetNetwork(self):
+        self.target_network.load_state_dict(self.main_network.state_dict())
 
 
 class RandomAgent(Agent):
     ''' Agent taking actions uniformly at random, child of the class Agent'''
+
     def __init__(self, n_actions: int):
         super(RandomAgent, self).__init__(n_actions)
 

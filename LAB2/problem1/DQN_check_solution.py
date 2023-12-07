@@ -19,20 +19,22 @@ import gym
 import torch
 from tqdm import trange
 
+
 def running_average(x, N):
     ''' Function used to compute the running average
         of the last N elements of a vector x
     '''
     if len(x) >= N:
         y = np.copy(x)
-        y[N-1:] = np.convolve(x, np.ones((N, )) / N, mode='valid')
+        y[N - 1:] = np.convolve(x, np.ones((N,)) / N, mode='valid')
     else:
         y = np.zeros_like(x)
     return y
 
+
 # Load model
 try:
-    model = torch.load('neural-network-1.pth')
+    model = torch.load('neural-network-1.pt')
     print('Network model: {}'.format(model))
 except:
     print('File neural-network-1.pth not found!')
@@ -43,7 +45,7 @@ env = gym.make('LunarLander-v2')
 env.reset()
 
 # Parameters
-N_EPISODES = 50            # Number of episodes to run for trainings
+N_EPISODES = 50  # Number of episodes to run for trainings
 CONFIDENCE_PASS = 50
 
 # Reward
@@ -56,7 +58,7 @@ for i in EPISODES:
     EPISODES.set_description("Episode {}".format(i))
     # Reset enviroment data
     done = False
-    state = env.reset()
+    state = env.reset()[0]
     total_episode_reward = 0.
     while not done:
         # Get next state and reward.  The done variable
@@ -64,7 +66,7 @@ for i in EPISODES:
         # False otherwise
         q_values = model(torch.tensor([state]))
         _, action = torch.max(q_values, axis=1)
-        next_state, reward, done, _ = env.step(action.item())
+        next_state, reward, done, _, _ = env.step(action.item())
 
         # Update episode reward
         total_episode_reward += reward
@@ -81,12 +83,13 @@ for i in EPISODES:
 avg_reward = np.mean(episode_reward_list)
 confidence = np.std(episode_reward_list) * 1.96 / np.sqrt(N_EPISODES)
 
-
 print('Policy achieves an average total reward of {:.1f} +/- {:.1f} with confidence 95%.'.format(
-                avg_reward,
-                confidence))
+    avg_reward,
+    confidence))
 
 if avg_reward - confidence >= CONFIDENCE_PASS:
     print('Your policy passed the test!')
 else:
-    print("Your policy did not pass the test! The average reward of your policy needs to be greater than {} with 95% confidence".format(CONFIDENCE_PASS))
+    print(
+        "Your policy did not pass the test! The average reward of your policy needs to be greater than {} with 95% confidence".format(
+            CONFIDENCE_PASS))
