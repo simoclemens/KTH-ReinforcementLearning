@@ -21,6 +21,25 @@ import matplotlib.pyplot as plt
 from tqdm import trange
 from DDPG_agent import RandomAgent
 
+class ExperienceReplayBuffer(object):
+    def __init__(self, maximum_length=15000):
+        self.buffer = deque(maxlen=maximum_length)
+
+    def append(self, experience):
+        self.buffer.append(experience)
+
+    def __len__(self):
+        return len(self.buffer)
+
+    def sample_batch(self, n):
+        if n > len(self.buffer):
+            print("Buffer too small")
+        indices = np.random.choice(len(self.buffer), n-1, replace=False)
+
+        batch = [self.buffer[i] for i in indices]
+        batch.append(self.buffer[-1])
+
+        return zip(*batch)
 
 def running_average(x, N):
     ''' Function used to compute the running average
@@ -38,10 +57,10 @@ env = gym.make('LunarLanderContinuous-v2')
 env.reset()
 
 # Parameters
-N_episodes = 100               # Number of episodes to run for training
-discount_factor = 0.95         # Value of gamma
-n_ep_running_average = 50      # Running average of 50 episodes
-m = len(env.action_space.high) # dimensionality of the action
+N_episodes = 100                # Number of episodes to run for training
+gamma = 0.95                    # Value of discount factor
+n_ep_running_average = 50       # Running average of 50 episodes
+m = len(env.action_space.high)  # dimensionality of the action
 
 # Reward
 episode_reward_list = []  # Used to save episodes reward
@@ -52,6 +71,9 @@ agent = RandomAgent(m)
 
 # Training process
 EPISODES = trange(N_episodes, desc='Episode: ', leave=True)
+
+buffer_size = 10000
+buffer = ExperienceReplayBuffer(maximum_length=buffer_size)
 
 for i in EPISODES:
     # Reset enviroment data
@@ -70,6 +92,34 @@ for i in EPISODES:
 
         # Update episode reward
         total_episode_reward += reward
+
+        z = (state, action, reward, next_state, done)
+
+        buffer.append(z)
+
+        if len(buffer) > 7500:
+            # Sample a batch from the experience buffer
+            states, actions, rewards, next_states, dones = buffer.sample_batch(N)
+
+            # Compute target values
+            y = np.zeros(len(states))
+            for j in range(len(states)):
+                if not dones[j]:
+                    next_state_tensor = torch.tensor(np.array([next_states[j]]),
+                                                     requires_grad=False,
+                                                     dtype=torch.float32)
+                    out = agent.target_network(next_state_tensor)
+                    max_Q = torch.max(out)
+                    y[j] = rewards[j] + gamma * max_Q
+                else:
+                    y[j] = rewards[j]
+
+            # perform backwards propagation
+            agent.backward(states, actions, y, N)
+
+            # Update episode reward
+            total_episode_reward += reward
+
 
         # Update state for next iteration
         state = next_state
