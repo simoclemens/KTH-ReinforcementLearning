@@ -75,16 +75,16 @@ buffer_size = 10000
 buffer = ExperienceReplayBuffer(maximum_length=buffer_size)
 
 # Parameters
-N_episodes = 275  # Number of episodes
-discount_factor = 0.95  # Value of the discount factor
+N_episodes = 300  # Number of episodes
+discount_factor = 1.0  # Value of the discount factor
 n_ep_running_average = 20  # Running average of 50 episodes
 eps_max = 0.95  # epsilon
 eps_min = 0.05
-lr = 0.0001
+lr = 0.0007
 gamma = 0.95
 n_actions = env.action_space.n  # Number of available actions
 dim_state = len(env.observation_space.high)  # State dimensionality
-N = 16 # Training batch
+N = 64  # Training batch
 C = int(buffer_size/N)  # Set target network to main network every C iterations.
 
 # We will use these variables to compute the average episodic reward and

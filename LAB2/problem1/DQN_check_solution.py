@@ -34,7 +34,7 @@ def running_average(x, N):
 
 # Load model
 try:
-    model = torch.load('neural-network-1.pt')
+    model = torch.load('neural-network-1(1).pt')
     print('Network model: {}'.format(model))
 except:
     print('File neural-network-1.pth not found!')
@@ -57,16 +57,17 @@ EPISODES = trange(N_EPISODES, desc='Episode: ', leave=True)
 for i in EPISODES:
     EPISODES.set_description("Episode {}".format(i))
     # Reset enviroment data
-    done = False
+    terminated = False
+    truncated = False
     state = env.reset()[0]
     total_episode_reward = 0.
-    while not done:
+    while not terminated and not truncated:
         # Get next state and reward.  The done variable
         # will be True if you reached the goal position,
         # False otherwise
         q_values = model(torch.tensor([state]))
         _, action = torch.max(q_values, axis=1)
-        next_state, reward, done, _, _ = env.step(action.item())
+        next_state, reward, terminated, truncated, _ = env.step(action.item())
 
         # Update episode reward
         total_episode_reward += reward
