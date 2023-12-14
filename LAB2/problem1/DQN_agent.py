@@ -24,14 +24,17 @@ class QNetwork(nn.Module):
     def __init__(self, input_size, output_size):
         super().__init__()
 
-        self.input_layer = nn.Linear(input_size, 32)
-        self.input_layer_activation = nn.ReLU()
-
-        self.output_layer = nn.Linear(32, output_size)
+        self.input_layer = nn.Linear(input_size, 64)
+        self.hidden_layer = nn.Linear(64, 64)
+        self.activation = nn.ReLU()
+        self.output_layer = nn.Linear(64, output_size)
+        print(self.hidden_layer)
 
     def forward(self, x):
         x = self.input_layer(x)
-        x = self.input_layer_activation(x)
+        x = self.activation(x)
+        x = self.hidden_layer(x)
+        x = self.activation(x)
         out = self.output_layer(x)
 
         return out
@@ -87,7 +90,7 @@ class Agent(object):
 
         loss = nn.functional.mse_loss(Q_tensor, target_values)
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.main_network.parameters(), 1)
+        torch.nn.utils.clip_grad_norm_(self.main_network.parameters(), 0.5)
         self.optimizer.step()
 
     def updateTargetNetwork(self):

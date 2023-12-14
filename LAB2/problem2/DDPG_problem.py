@@ -12,6 +12,8 @@
 # Code author: [Alessio Russo - alessior@kth.se]
 # Last update: 20th November 2020, by alessior@kth.se
 #
+from collections import deque
+import os
 
 # Load packages
 import numpy as np
@@ -19,7 +21,9 @@ import gym
 import torch
 import matplotlib.pyplot as plt
 from tqdm import trange
-from DDPG_agent import RandomAgent
+from DDPG_agent import RandomAgent, Agent
+
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
 class ExperienceReplayBuffer(object):
     def __init__(self, maximum_length=15000):
@@ -34,12 +38,13 @@ class ExperienceReplayBuffer(object):
     def sample_batch(self, n):
         if n > len(self.buffer):
             print("Buffer too small")
-        indices = np.random.choice(len(self.buffer), n-1, replace=False)
+        indices = np.random.choice(len(self.buffer), n - 1, replace=False)
 
         batch = [self.buffer[i] for i in indices]
         batch.append(self.buffer[-1])
 
         return zip(*batch)
+
 
 def running_average(x, N):
     ''' Function used to compute the running average
@@ -47,40 +52,79 @@ def running_average(x, N):
     '''
     if len(x) >= N:
         y = np.copy(x)
-        y[N-1:] = np.convolve(x, np.ones((N, )) / N, mode='valid')
+        y[N - 1:] = np.convolve(x, np.ones((N,)) / N, mode='valid')
     else:
         y = np.zeros_like(x)
     return y
+
 
 # Import and initialize Mountain Car Environment
 env = gym.make('LunarLanderContinuous-v2')
 env.reset()
 
+dim_state = len(env.observation_space.high)  # State dimensionality
+
 # Parameters
-N_episodes = 100                # Number of episodes to run for training
-gamma = 0.95                    # Value of discount factor
-n_ep_running_average = 50       # Running average of 50 episodes
-m = len(env.action_space.high)  # dimensionality of the action
+N_episodes = 300  # Number of episodes
+
+n_ep_running_average = 50  # Running average of 50 episodes
+lr_a = 0.00005
+lr_c = 0.0005
+gamma = 0.99
+buffer_size = 30000
+N = 64  # Training batch
+
+d = 2
+mu = 0.15
+sigma = 0.2
+
+tau = 0.001
 
 # Reward
 episode_reward_list = []  # Used to save episodes reward
 episode_number_of_steps = []
 
+# Buffer initialization
+buffer = ExperienceReplayBuffer(maximum_length=buffer_size)
+
 # Agent initialization
-agent = RandomAgent(m)
+# agent = RandomAgent(m)
+agent = Agent(lr_a=lr_a, lr_c=lr_c)
+
+while len(buffer) < buffer_size:
+    done = False
+    state = env.reset()[0]
+    total_episode_reward = 0.
+    t = 0
+
+    while not done:
+        # Take a random action
+        action = np.random.uniform(-1, 1, size=(2,))
+
+        # Get next state and reward.  The done variable
+        # will be True if you reached the goal position,
+        # False otherwise
+        next_state, reward, terminated, truncated, _ = env.step(action)
+
+        if terminated or truncated:
+            done = True
+
+        z = (state, action, reward, next_state, done)
+
+        buffer.append(z)
+
 
 # Training process
 EPISODES = trange(N_episodes, desc='Episode: ', leave=True)
 
-buffer_size = 10000
-buffer = ExperienceReplayBuffer(maximum_length=buffer_size)
-
 for i in EPISODES:
+
     # Reset enviroment data
     done = False
-    state = env.reset()
+    state = env.reset()[0]
     total_episode_reward = 0.
     t = 0
+
     while not done:
         # Take a random action
         action = agent.forward(state)
@@ -88,7 +132,10 @@ for i in EPISODES:
         # Get next state and reward.  The done variable
         # will be True if you reached the goal position,
         # False otherwise
-        next_state, reward, done, _ = env.step(action)
+        next_state, reward, terminated, truncated, _ = env.step(action)
+
+        if terminated or truncated:
+            done = True
 
         # Update episode reward
         total_episode_reward += reward
@@ -97,33 +144,38 @@ for i in EPISODES:
 
         buffer.append(z)
 
-        if len(buffer) > 7500:
-            # Sample a batch from the experience buffer
-            states, actions, rewards, next_states, dones = buffer.sample_batch(N)
 
-            # Compute target values
-            y = np.zeros(len(states))
-            for j in range(len(states)):
-                if not dones[j]:
-                    next_state_tensor = torch.tensor(np.array([next_states[j]]),
-                                                     requires_grad=False,
-                                                     dtype=torch.float32)
-                    out = agent.target_network(next_state_tensor)
-                    max_Q = torch.max(out)
-                    y[j] = rewards[j] + gamma * max_Q
-                else:
-                    y[j] = rewards[j]
+        # Sample a batch from the experience buffer
+        states, actions, rewards, next_states, dones = buffer.sample_batch(N)
 
-            # perform backwards propagation
-            agent.backward(states, actions, y, N)
+        # Compute target values
+        y = np.zeros(len(states))
+        for j in range(len(states)):
+            if not dones[j]:
+                next_state_tensor = torch.tensor(np.array([next_states[j]]),
+                                                 requires_grad=False,
+                                                 dtype=torch.float32).to("cuda")
 
-            # Update episode reward
-            total_episode_reward += reward
+                target_action = agent.act_target(next_state_tensor)
+                Q_target = agent.crit_target(next_state_tensor, target_action)
+                y[j] = rewards[j] + gamma * Q_target
+            else:
+                y[j] = rewards[j]
 
+        # perform backwards propagation
+        agent.backward_actor(states, actions, y, N)
+
+        # Update episode reward
+        total_episode_reward += reward
+
+        # set target network to main network
+        if t % d == 0:
+            agent.backward_critic(states, N)
+            agent.update_target(tau)
 
         # Update state for next iteration
         state = next_state
-        t+= 1
+        t += 1
 
     # Append episode reward
     episode_reward_list.append(total_episode_reward)
@@ -136,15 +188,14 @@ for i in EPISODES:
     # of the last episode, average reward, average number of steps)
     EPISODES.set_description(
         "Episode {} - Reward/Steps: {:.1f}/{} - Avg. Reward/Steps: {:.1f}/{}".format(
-        i, total_episode_reward, t,
-        running_average(episode_reward_list, n_ep_running_average)[-1],
-        running_average(episode_number_of_steps, n_ep_running_average)[-1]))
-
+            i, total_episode_reward, t,
+            running_average(episode_reward_list, n_ep_running_average)[-1],
+            running_average(episode_number_of_steps, n_ep_running_average)[-1]))
 
 # Plot Rewards and steps
 fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(16, 9))
-ax[0].plot([i for i in range(1, N_episodes+1)], episode_reward_list, label='Episode reward')
-ax[0].plot([i for i in range(1, N_episodes+1)], running_average(
+ax[0].plot([i for i in range(1, N_episodes + 1)], episode_reward_list, label='Episode reward')
+ax[0].plot([i for i in range(1, N_episodes + 1)], running_average(
     episode_reward_list, n_ep_running_average), label='Avg. episode reward')
 ax[0].set_xlabel('Episodes')
 ax[0].set_ylabel('Total reward')
@@ -152,8 +203,8 @@ ax[0].set_title('Total Reward vs Episodes')
 ax[0].legend()
 ax[0].grid(alpha=0.3)
 
-ax[1].plot([i for i in range(1, N_episodes+1)], episode_number_of_steps, label='Steps per episode')
-ax[1].plot([i for i in range(1, N_episodes+1)], running_average(
+ax[1].plot([i for i in range(1, N_episodes + 1)], episode_number_of_steps, label='Steps per episode')
+ax[1].plot([i for i in range(1, N_episodes + 1)], running_average(
     episode_number_of_steps, n_ep_running_average), label='Avg. number of steps per episode')
 ax[1].set_xlabel('Episodes')
 ax[1].set_ylabel('Total number of steps')
