@@ -124,11 +124,16 @@ for i in EPISODES:
     state = env.reset()[0]
     total_episode_reward = 0.
     t = 0
+    n_t = 0
 
     while not done:
         # Take a random action
         action = agent.forward(state)
 
+        w_t = np.random.normal(mu, sigma, size=(2,))
+        n_t = -mu*n_t + w_t
+
+        action = action + n_t
         # Get next state and reward.  The done variable
         # will be True if you reached the goal position,
         # False otherwise

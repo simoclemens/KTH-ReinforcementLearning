@@ -15,6 +15,10 @@
 
 # Load packages
 import numpy as np
+import torch
+import torch.nn as nn
+import torch.optim as optim
+
 
 class Agent(object):
     ''' Base agent class
@@ -25,8 +29,13 @@ class Agent(object):
         Attributes:
             n_actions (int): where we store the dimensionality of an action
     '''
-    def __init__(self, n_actions: int):
-        self.n_actions = n_actions
+    def __init__(self, lr_a, lr_c):
+        self.gpu = "cuda"
+        self.cpu = "cpu"
+        self.act = ActNetwork(8).to(self.gpu)
+        self.crit = CritNetwork(8).to(self.gpu)
+        self.optimizer_act = optim.Adam(self.act.parameters(), lr=lr_a)
+        self.optimizer_crit = optim.Adam(self.crit.parameters(), lr=lr_c)
 
     def forward(self, state: np.ndarray):
         ''' Performs a forward computation '''
